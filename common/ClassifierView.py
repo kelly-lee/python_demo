@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
 from sklearn import datasets
 from sklearn import decomposition
 from mpl_toolkits.mplot3d import Axes3D
@@ -30,7 +31,6 @@ def viewCalssifierData(data, target, axis):
     axis.set_yticks(())
 
 
-#
 def viewCalssifier(clf, data, target, axis):
     # 特征集降成2维
     data_reduced = decomposition.PCA(n_components=2).fit_transform(data)
@@ -51,8 +51,8 @@ def viewCalssifier(clf, data, target, axis):
     z = clf.predict(np.c_[gridx.ravel(), gridy.ravel()]).reshape(gridx.shape)
     axis.contourf(gridx, gridy, z, alpha=0.8)
     axis.scatter(datax, datay, c=target, edgecolors='k')
-    ax.text(datax_max - .3, datay_min + .3, ('%.2f' % score).lstrip('0'),
-            size=15, horizontalalignment='right')
+    axis.text(datax_max - .3, datay_min + .3, ('%.2f' % score).lstrip('0'),
+              size=15, horizontalalignment='right')
     axis.set_xlim(datax_min, datax_max)
     axis.set_ylim(datay_min, datay_max)
     axis.set_xticks(())
@@ -66,46 +66,4 @@ def viewCalssifierData3D(data, target):
     ax.scatter(data_reduced[:, 0], data_reduced[:, 1], c=target, edgecolors='k')
 
 
-# viewData3D(iris.data[:, :3], iris.target)
-# viewData(iris.data[:, :2], iris.target)
-# plt.show()
-#
 
-# view1(wine.data[:, 0], wine.data[:, 1], wine.target)
-
-# iris = datasets.load_iris()
-# wine = datasets.load_wine()
-moons = datasets.make_moons(noise=0.3, random_state=0)
-circles = datasets.make_circles(noise=0.2, factor=0.5, random_state=1)
-datasets = [moons, circles]
-knc = KNeighborsClassifier(3)
-dtc = tree.DecisionTreeClassifier(max_depth=5)
-classifiers = [knc, dtc]
-
-row = len(datasets)
-col = len(classifiers) + 1
-
-# print range(row)
-plt.figure(figsize=(4 * row, 2 * col))
-for i in range(row):
-    for j in range(col):
-        print i, j
-        ax = plt.subplot(row, col, i * col + j + 1)
-        x, y = datasets[i]
-        if j == 0:
-            viewCalssifierData(x, y, ax)
-        else:
-            viewCalssifier(classifiers[j - 1], x, y, ax)
-        print i, j
-
-# x, y = moons
-#
-# clf = tree.DecisionTreeClassifier(max_depth=5)
-# viewCalssifier(clf, x, y, ax1)
-#
-# ax2 = plt.subplot(1, 2, 2)
-#
-# x, y = circles
-# clf = tree.DecisionTreeClassifier(max_depth=5)
-# viewCalssifier(clf, x, y, ax2)
-plt.show()

@@ -25,4 +25,4 @@ for i in range(row):
         else:
             cv.viewCalssifier(classifiers[j - 1], x, y, ax)
         print i, j
-#plt.show()
+
