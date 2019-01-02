@@ -6,6 +6,22 @@ import talib
 import numpy as np
 
 
+# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
+# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
+def AROON(high, low, time_period):
+    aroon_up = high.rolling(time_period + 1).apply(
+        lambda h: pd.Series(h).idxmax() * 100.0 / time_period, raw='False')
+    aroon_down = low.rolling(time_period + 1).apply(
+        lambda l: pd.Series(l).idxmin() * 100.0 / time_period, raw='False')
+    return aroon_up, aroon_down
+
+
+# Aroon Oscillator = Aroon-Up  -  Aroon-Down
+def AROONOSC(high, low, time_period):
+    aroon_up, aroon_down = AROON(high, low, time_period)
+    return aroon_up - aroon_down
+
+
 def HH(high, time_period):
     return high.rolling(time_period).max()
 
@@ -17,28 +33,28 @@ def LL(low, time_period):
 # https://github.com/jealous/stockstats/blob/master/stockstats.py
 # Simple Moving Average (SMA) 简单移动平均线
 # SMA: 10-period sum / 10
-def SMA(data, time_period):
-    return data.rolling(time_period).mean()
+def SMA(price, time_period):
+    return price.rolling(time_period).mean()
 
 
 # Exponential Moving Average (EMA) 指数移动平均线
 # Initial SMA: 10-period sum / 10
 # Multiplier: (2 / (Time periods + 1) ) = (2 / (10 + 1) ) = 0.1818 (18.18%)
 # EMA: {Close - EMA(previous day)} x multiplier + EMA(previous day).
-def EMA(data, time_period):
-    return data.ewm(ignore_na=False, span=time_period, min_periods=0, adjust=True).mean()
+def EMA(price, time_period):
+    return price.ewm(ignore_na=False, span=time_period, min_periods=0, adjust=True).mean()
 
 
 # Weighted Moving Average (WMA) 加权移动平均线
 # Coppock Curve = 10-period WMA of (14-period RoC + 11-period RoC)
 # WMA = Weighted Moving Average
 # RoC = Rate-of-Change
-def WMA(data, time_period):
-    return data.rolling(time_period).apply(lambda x: np.average(x, weights=np.arange(1, time_period + 1)))
+def WMA(price, time_period):
+    return price.rolling(time_period).apply(lambda x: np.average(x, weights=np.arange(1, time_period + 1)))
 
 
-def SMMA(data, time_period):
-    return data.ewm(ignore_na=False, alpha=1.0 / time_period, min_periods=0, adjust=True).mean()
+def SMMA(price, time_period):
+    return price.ewm(ignore_na=False, alpha=1.0 / time_period, min_periods=0, adjust=True).mean()
 
 
 # Moving Average Convergence/Divergence Oscillator (MACD) 平滑异同移动平均线
@@ -79,6 +95,14 @@ def RSI(data, time_period=14):
     avg_loss = diff.clip_upper(0).ewm(alpha=alpha).mean()
     rsi = 100 - 100 / (1 - avg_gain / avg_loss)
     return rsi
+
+
+# StochRSI = (RSI - Lowest Low RSI) / (Highest High RSI - Lowest Low RSI)
+def STOCHRSI(data, time_period=14):
+    rsi = RSI(data, time_period)
+    ll_rsi = LL(rsi, time_period)
+    hh_rsi = HH(rsi, time_period)
+    return (rsi - ll_rsi) / (hh_rsi - ll_rsi)
 
 
 # KDJ
@@ -247,12 +271,12 @@ def WILLR(data, time_period):
     return (hh - c) / (hh - ll) * (-100)
 
 
-def TR(data, time_period):
-    return EMA(EMA(EMA(data, time_period), time_period), time_period)
+# def TR(data, time_period):
+#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
 
 
 def TRIX(data, time_period):
-    tr = TR(data, time_period)
+    tr = EMA(EMA(EMA(data, time_period), time_period), time_period)
     return (tr - tr.shift(1)) / tr.shift(1) * 100
 
 
@@ -349,8 +373,21 @@ ax = fig.add_subplot(2, 1, 1)
 
 # ax.plot(WILLR(data, time_period=14))
 # ax.plot(talib.WILLR(data['High'], data['Low'], data['Close'], timeperiod=14))
-ax.plot(TRIX(data['Close'], time_period=14))
-ax.plot(talib.TRIX(data['Close'], timeperiod=14))
+# ax.plot(TRIX(data['Close'], time_period=14))
+# ax.plot(talib.TRIX(data['Close'], timeperiod=14))
+# ax.plot(STOCHRSI(data['Close'], time_period=14))
+# ax.plot(talib.STOCHRSI(data['Close'], timeperiod=14))
+
+# ax.plot(AROON(data['High'], data['Low'], time_period=14))
+# h, l = AROON(data['High'], data['Low'], time_period=14)
+# h1, l1 = talib.AROON(data['High'], data['Low'], timeperiod=14)
+# ax.plot(h)
+# ax.plot(l)
+# ax.plot(h1)
+# ax.plot(l1)
+
+ax.plot(AROONOSC(data['High'], data['Low'], time_period=14))
+ax.plot(talib.AROONOSC(data['High'], data['Low'], timeperiod=14))
 
 plt.legend()
 plt.show()
