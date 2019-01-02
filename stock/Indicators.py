@@ -5,7 +5,16 @@ import matplotlib.pyplot as plt
 import talib
 import numpy as np
 
-#https://github.com/jealous/stockstats/blob/master/stockstats.py
+
+def HH(high, time_period):
+    return high.rolling(time_period).max()
+
+
+def LL(low, time_period):
+    return low.rolling(time_period).min()
+
+
+# https://github.com/jealous/stockstats/blob/master/stockstats.py
 # Simple Moving Average (SMA) 简单移动平均线
 # SMA: 10-period sum / 10
 def SMA(data, time_period):
@@ -20,7 +29,7 @@ def EMA(data, time_period):
     return data.ewm(ignore_na=False, span=time_period, min_periods=0, adjust=True).mean()
 
 
-# Weighted Moving Average (WMA)
+# Weighted Moving Average (WMA) 加权移动平均线
 # Coppock Curve = 10-period WMA of (14-period RoC + 11-period RoC)
 # WMA = Weighted Moving Average
 # RoC = Rate-of-Change
@@ -84,7 +93,7 @@ def RSI(data, time_period=14):
 
 def STOCHF(data, fastk_period=5, fastd_period=3):
     h, l, c = data['High'], data['Low'], data['Close']
-    hh, ll = h.rolling(fastk_period).max(), l.rolling(fastk_period).min()
+    hh, ll = HH(h, fastk_period), LL(l, fastk_period)
     fast_k = (c - ll) / (hh - ll) * 100
     fast_d = SMA(fast_k, fastd_period)
     return fast_k, fast_d
@@ -100,7 +109,7 @@ def STOCHF(data, fastk_period=5, fastd_period=3):
 # J = 3 * D - 2 * K
 def STOCH(data, fastk_period=5, slowk_period=3, slowd_period=3):
     h, l, c = data['High'], data['Low'], data['Close']
-    hh, ll = h.rolling(fastk_period).max(), l.rolling(fastk_period).min()
+    hh, ll = HH(h, fastk_period), LL(l, fastk_period)
     fast_k = (c - ll) / (hh - ll) * 100
     slow_k = SMA(fast_k, slowk_period)
     slow_d = SMA(slow_k, slowd_period)
@@ -155,24 +164,56 @@ def ATR(data, time_period):
     return SMMA(TR(data), time_period)
 
 
-def ADX(data, time_period):
-    h, l, v = data['High'], data['Low'], data['Volume']
+# HD = MAX(H-REF(H),0)
+# LD = MAX(REF(L)-L,0)
+# +DM = SMMA(HD>LD?HD:0)
+# -DM = SMMA(HD<LD?LD:0)
+def _DM_(data, time_period):
+    h, l = data['High'], data['Low']
     df = pd.DataFrame()
     hd = h - h.shift(1)
     hd = (hd + hd.abs()) / 2
     ld = l.shift(1) - l
     ld = (ld + ld.abs()) / 2
-    tr = df['tr'] = TR(data)
+    tr = df['tr'] = TR(data)  # 去掉这行报错，不知为什么
 
     df['pdm'] = np.where(hd > ld, hd, 0)
     df['mdm'] = np.where(hd < ld, ld, 0)
-    pdm_smma = SMMA(df['pdm'], time_period)
-    mdm_smma = SMMA(df['mdm'], time_period)
-    tr_smma = SMMA(tr, time_period)
-    pdi = pdm_smma / tr_smma * 100
-    mdi = mdm_smma / tr_smma * 100
-    dx = (pdi - mdi).abs() / (pdi + mdi) * 100
-    return SMMA(dx, time_period)
+    pdm_smma = SMMA(df['pdm'], time_period)  # +DM
+    mdm_smma = SMMA(df['mdm'], time_period)  # -DM
+    return pdm_smma, mdm_smma
+
+
+def DM(data, time_period):
+    pdm_smma, mdm_smma = _DM_(data, time_period)
+    return pdm_smma * time_period, mdm_smma * time_period
+
+
+# +DI = +DM/TR*100
+# -DI = -DM/TR*100
+def DI(data, time_period):
+    pdm, mdm = _DM_(data, time_period)
+    tr = SMMA(TR(data), time_period)
+    pdi = pdm / tr * 100  # +DI
+    mdi = mdm / tr * 100  # -DI
+    return pdi, mdi
+
+
+# DX = (DI DIF/DI SUM)*100
+# DX = |(+DI14)-(-DI14)|/|(+DI14)+(-DI14)|
+def DX(data, time_period):
+    pdi, mdi = DI(data, time_period)
+    return (pdi - mdi).abs() / (pdi + mdi) * 100  # DX
+
+
+# ADX = SMMA(DX,N)
+def ADX(data, time_period):
+    return SMMA(DX(data, time_period), time_period)
+
+
+# ADXR = (ADX+REF(ADX,N))/2
+def ADXR(data, time_period):
+    return (ADX(data, time_period) + ADX(data, time_period).shift(time_period)) / 2
 
     # df['hd'] = h - h.shift(1)
     # df.ix[df['hd'] < 0, 'hd'] = 0
@@ -194,6 +235,25 @@ def ADX(data, time_period):
     # df['dx'] = ((df['pdi%d' % time_period] - df['mdi%d' % time_period]) / (
     #         df['pdi%d' % time_period] + df['mdi%d' % time_period])).abs() * 100
     # return SMMA(df['dx'], time_period)
+
+
+# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
+# Lowest Low = lowest low for the look-back period
+# Highest High = highest high for the look-back period
+# %R is multiplied by -100 correct the inversion and move the decimal.
+def WILLR(data, time_period):
+    h, l, c = data['High'], data['Low'], data['Close']
+    hh, ll = HH(h, time_period), LL(l, time_period)
+    return (hh - c) / (hh - ll) * (-100)
+
+
+def TR(data, time_period):
+    return EMA(EMA(EMA(data, time_period), time_period), time_period)
+
+
+def TRIX(data, time_period):
+    tr = TR(data, time_period)
+    return (tr - tr.shift(1)) / tr.shift(1) * 100
 
 
 data = web.DataReader('GOOG', data_source='yahoo', start='9/1/2018', end='12/30/2018')
@@ -269,9 +329,29 @@ ax = fig.add_subplot(2, 1, 1)
 
 # ax.plot(emv, label="emv")
 
-ax.plot(ADX(data, time_period=14))
-ax.plot(talib.ADX(data['High'], data['Low'], data['Close'], timeperiod=14))
+# ax.plot(ADXR(data, time_period=14))
+# ax.plot(talib.ADXR(data['High'], data['Low'], data['Close'], timeperiod=14))
+
+# pdm, mdm = DM(data, time_period=14)
+# ax.plot(pdm)
+# ax.plot(mdm)
+# ax.plot(talib.MINUS_DM(data['High'], data['Low'], timeperiod=14))
+# ax.plot(talib.PLUS_DM(data['High'], data['Low'], timeperiod=14))
+#
+# ax.plot(DX(data, time_period=14))
+# ax.plot(talib.DX(data['High'], data['Low'], data['Close'], timeperiod=14))
+
+# pdi, mdi = DI(data, time_period=14)
+# ax.plot(pdi)
+# ax.plot(mdi)
+# ax.plot(talib.PLUS_DI(data['High'], data['Low'], data['Close'], timeperiod=14))
+# ax.plot(talib.MINUS_DI(data['High'], data['Low'], data['Close'], timeperiod=14))
+
+# ax.plot(WILLR(data, time_period=14))
+# ax.plot(talib.WILLR(data['High'], data['Low'], data['Close'], timeperiod=14))
+ax.plot(TRIX(data['Close'], time_period=14))
+ax.plot(talib.TRIX(data['Close'], timeperiod=14))
 
 plt.legend()
 plt.show()
-print ADX(data, time_period=14)
+# print ADX(data, time_period=14)

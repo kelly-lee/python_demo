@@ -17,7 +17,18 @@ from talib import abstract
 
 
 # print (talib.abstract.EOM)
-print (talib.abstract.ADX)
+
 print (talib.abstract.ATR)
+
+# print (talib.abstract.PLUS_DI)
+# print (talib.abstract.PLUS_DM)
+# print (talib.abstract.MINUS_DI)
+# print (talib.abstract.MINUS_DM)
+# print (talib.abstract.DX)
+# print (talib.abstract.ADX)
+# print (talib.abstract.ADXR)
+
+# print (talib.abstract.WILLR)
+print talib.abstract.TRIX
 
 print talib.get_functions()
