@@ -6,31 +6,30 @@ import talib
 import numpy as np
 
 
-# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
-# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
-def AROON(high, low, time_period):
-    aroon_up = high.rolling(time_period + 1).apply(
-        lambda h: pd.Series(h).idxmax() * 100.0 / time_period, raw='False')
-    aroon_down = low.rolling(time_period + 1).apply(
-        lambda l: pd.Series(l).idxmin() * 100.0 / time_period, raw='False')
-    return aroon_up, aroon_down
+def MAX(price, time_period):
+    return price.rolling(time_period).max()
 
 
-# Aroon Oscillator = Aroon-Up  -  Aroon-Down
-def AROONOSC(high, low, time_period):
-    aroon_up, aroon_down = AROON(high, low, time_period)
-    return aroon_up - aroon_down
+def MIN(price, time_period):
+    return price.rolling(time_period).min()
+
+
+def STD(price, time_period):
+    return price.rolling(time_period).std()
 
 
 def HH(high, time_period):
-    return high.rolling(time_period).max()
+    return MAX(high, time_period)
 
 
 def LL(low, time_period):
-    return low.rolling(time_period).min()
+    return MIN(low, time_period)
 
 
-# https://github.com/jealous/stockstats/blob/master/stockstats.py
+def TP(high, low, close):
+    return (high + low + close) / 3
+
+
 # Simple Moving Average (SMA) 简单移动平均线
 # SMA: 10-period sum / 10
 def SMA(price, time_period):
@@ -50,7 +49,7 @@ def EMA(price, time_period):
 # WMA = Weighted Moving Average
 # RoC = Rate-of-Change
 def WMA(price, time_period):
-    return price.rolling(time_period).apply(lambda x: np.average(x, weights=np.arange(1, time_period + 1)))
+    return price.rolling(time_period).apply(lambda x: np.average(x, weights=np.arange(1, time_period + 1)), raw=False)
 
 
 def SMMA(price, time_period):
@@ -61,8 +60,8 @@ def SMMA(price, time_period):
 # MACD: (12-day EMA - 26-day EMA)
 # Signal Line: 9-day EMA of MACD
 # MACD Histogram: MACD - Signal Line
-def MACD(data, fast_period=12, slow_period=26, signal_period=9):
-    macd = EMA(data, fast_period) - EMA(data, slow_period)
+def MACD(price, fast_period=12, slow_period=26, signal_period=9):
+    macd = EMA(price, fast_period) - EMA(price, slow_period)
     macd_signal = EMA(macd, signal_period)
     macd_histogram = macd - macd_signal
     return macd, macd_signal, macd_histogram
@@ -72,10 +71,10 @@ def MACD(data, fast_period=12, slow_period=26, signal_period=9):
 # Middle Band = 20-day simple moving average (SMA)
 # Upper Band = 20-day SMA + (20-day standard deviation of price x 2)
 # Lower Band = 20-day SMA - (20-day standard deviation of price x 2)
-def BBANDS(data, time_period=5, nbdevup=2, nbdevdn=2):
-    middle_band = SMA(data, time_period)
-    upper_band = SMA(data, time_period) + data.rolling(time_period).std() * nbdevup
-    lower_band = SMA(data, time_period) - data.rolling(time_period).std() * nbdevdn
+def BBANDS(price, time_period=5, nb_dev_up=2, nb_dev_dn=2):
+    middle_band = SMA(price, time_period)
+    upper_band = SMA(price, time_period) + STD(price, time_period) * nb_dev_up
+    lower_band = SMA(price, time_period) - STD(price, time_period) * nb_dev_dn
     return upper_band, middle_band, lower_band
 
 
@@ -95,6 +94,68 @@ def RSI(data, time_period=14):
     avg_loss = diff.clip_upper(0).ewm(alpha=alpha).mean()
     rsi = 100 - 100 / (1 - avg_gain / avg_loss)
     return rsi
+
+
+
+
+
+
+# On Balance Volume (OBV) 能量潮指标
+# If the closing price is above the prior close price then:
+# Current OBV = Previous OBV + Current Volume
+# If the closing price is below the prior close price then:
+# Current OBV = Previous OBV  -  Current Volume
+# If the closing prices equals the prior close price then:
+# Current OBV = Previous OBV (no change)
+def OBV(price, volume):
+    pnv = volume.where(price > price.shift(1), -volume)[3:]
+    return pnv.cumsum()
+
+
+# Typical Price = (High + Low + Close)/3
+# Raw Money Flow = Typical Price x Volume
+# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
+# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
+def MFI(high, low, close, volume, time_period):
+    tp = TP(high, low, close)
+    raw_money_flow = tp * volume
+    pos_money_flow = raw_money_flow.where(tp > tp.shift(1), 0)
+    neg_money_flow = raw_money_flow.where(tp < tp.shift(1), 0)
+    pos_money_flow_sum = pos_money_flow.rolling(time_period).sum()
+    neg_money_flow_sum = neg_money_flow.rolling(time_period).sum()
+    money_flow_ratio = pos_money_flow_sum / neg_money_flow_sum
+    money_flow_index = 100 - 100 / (1 + money_flow_ratio)
+    return money_flow_index
+
+
+# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
+# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
+def AROON(high, low, time_period):
+    aroon_up = high.rolling(time_period + 1).apply(
+        lambda h: pd.Series(h).idxmax() * 100.0 / time_period, raw='False')
+    aroon_down = low.rolling(time_period + 1).apply(
+        lambda l: pd.Series(l).idxmin() * 100.0 / time_period, raw='False')
+    return aroon_up, aroon_down
+
+
+# Aroon Oscillator = Aroon-Up  -  Aroon-Down
+def AROONOSC(high, low, time_period):
+    aroon_up, aroon_down = AROON(high, low, time_period)
+    return aroon_up - aroon_down
+
+
+# Percentage Price Oscillator (PPO) 价格震荡百分比指数 和talib有出入
+# Percentage Price Oscillator (PPO): {(12-day EMA - 26-day EMA)/26-day EMA} x 100
+# Signal Line: 9-day EMA of PPO
+# PPO Histogram: PPO - Signal Line
+def PPO(price, fast_period=12, slow_period=26, signal_period=9):
+    ppo = (EMA(price, fast_period) - EMA(price, slow_period)) * 100.0 / EMA(price, slow_period)
+    ppo_signal = EMA(ppo, signal_period)
+    ppo_histogram = ppo - ppo_signal
+    return ppo, ppo_signal, ppo_histogram
+
+
+
 
 
 # StochRSI = (RSI - Lowest Low RSI) / (Highest High RSI - Lowest Low RSI)
@@ -174,13 +235,16 @@ def EMV(data, time_period=14):
 
 
 # TR : MAX(MAX((HIGH-LOW),ABS(REF(CLOSE,1)-HIGH)),ABS(REF(CLOSE,1)-LOW))
-def TR(data):
-    h, l, c = data['High'], data['Low'], data['Close']
+def TR1(high, low, close):
     df = pd.DataFrame()
-    df['hl'] = (h - l).abs()
-    df['hcl'] = (c.shift(1) - h).abs()
-    df['cll'] = (c.shift(1) - l).abs()
+    df['hl'] = (high - low).abs()
+    df['hcl'] = (close.shift(1) - high).abs()
+    df['cll'] = (close.shift(1) - low).abs()
     return df.max(axis=1)
+
+
+def TR(data):
+    return TR(data['High'], data['Low'], data['Close'])
 
 
 # ATR : SMMA(TR,N)
@@ -330,6 +394,16 @@ ax = fig.add_subplot(2, 1, 1)
 # ax.plot(macdsignal, label="talib_macd_signal")
 # ax.bar(data.index, macdhist)
 
+# ppo, ppo_signal, ppo_hist = PPO(data['Close'], fast_period=12, slow_period=26, signal_period=9)
+# ax.plot(ppo, label="talib_macd")
+# ax.plot(ppo_signal, label="talib_macd_signal")
+# ax.plot(data.index, ppo)
+# ax.plot(data.index, ppo_signal)
+# ax.plot(data.index, ppo_hist)
+
+# ppo_hist1 = talib.PPO(data['Close'], fastperiod=12, slowperiod=26, matype=1)
+# ax.plot(data.index, ppo_hist1)
+
 # ax.plot(u)
 # ax.plot(m)
 # ax.plot(l)
@@ -386,8 +460,14 @@ ax = fig.add_subplot(2, 1, 1)
 # ax.plot(h1)
 # ax.plot(l1)
 
-ax.plot(AROONOSC(data['High'], data['Low'], time_period=14))
-ax.plot(talib.AROONOSC(data['High'], data['Low'], timeperiod=14))
+# ax.plot(AROONOSC(data['High'], data['Low'], time_period=14))
+# ax.plot(talib.AROONOSC(data['High'], data['Low'], timeperiod=14))
+
+# ax.plot(MFI(data['High'], data['Low'], data['Close'], data['Volume'], time_period=14))
+# ax.plot(talib.MFI(data['High'], data['Low'], data['Close'], data['Volume'], timeperiod=14))
+
+# ax.plot(OBV(data['High'], data['Volume']))
+# ax.plot(talib.OBV(data['High'], data['Volume']))
 
 plt.legend()
 plt.show()
