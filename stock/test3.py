@@ -62,8 +62,8 @@ print df['A'].clip_lower(0)
 
 # print df.rolling(3).apply(lambda x: (3 - (3 - pd.Series(x).idxmax() - 1)) / 3 * 100)
 
-# data = web.DataReader('GOOG', data_source='yahoo', start='9/1/2018', end='12/30/2018')
-# data = pd.DataFrame(data)
-# high, low, close = data['High'], data['Low'], data['Close']
-
-
+data = web.DataReader('GOOG', data_source='yahoo', start='9/1/2018', end='12/30/2018')
+data = pd.DataFrame(data)
+high, low, close = data['High'], data['Low'], data['Close']
+print high.rolling(5).apply(lambda h: pd.Series(h).idxmax(), raw=True)
+# print high.rolling(5).apply(lambda x: x.argmax())

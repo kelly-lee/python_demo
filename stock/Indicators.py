@@ -18,8 +18,16 @@ def MAX(price, time_period):
     return price.rolling(time_period).max()
 
 
+def MAXINDEX(price, time_period):
+    return price.rolling(time_period).apply(lambda h: pd.Series(h).idxmax(), raw=True)
+
+
 def MIN(price, time_period):
     return price.rolling(time_period).min()
+
+
+def MININDEX(price, time_period):
+    return price.rolling(time_period).apply(lambda h: pd.Series(h).idxmin(), raw=True)
 
 
 def STD(price, time_period):
@@ -28,6 +36,10 @@ def STD(price, time_period):
 
 def SUM(price, time_period):
     return price.rolling(time_period).sum()
+
+
+def MEDIAN(high, low):
+    return (high + low) / 2
 
 
 def HH(high, time_period):
@@ -139,19 +151,6 @@ def RSI(price, time_period=14):
     return rsi
 
 
-# Typical Price = (High + Low + Close)/3
-# Raw Money Flow = Typical Price x Volume
-# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
-# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
-def MFI(high, low, close, volume, time_period):
-    tp = TP(high, low, close)
-    raw_money_flow = tp * volume
-    pos_money_flow = raw_money_flow.where(tp > tp.shift(1), 0)
-    neg_money_flow = raw_money_flow.where(tp < tp.shift(1), 0)
-    money_flow_ratio = SUM(pos_money_flow, time_period) / SUM(neg_money_flow, time_period)
-    return 100 - 100 / (1 + money_flow_ratio)
-
-
 # Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
 # CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
 # Typical Price (TP) = (High + Low + Close)/3
@@ -169,6 +168,63 @@ def ROC(price, time_period):
     return DIFF(price, time_period) / REF(price, time_period) * 100
 
 
+# Typical Price = (High + Low + Close)/3
+# Raw Money Flow = Typical Price x Volume
+# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
+# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
+def MFI(high, low, close, volume, time_period):
+    tp = TP(high, low, close)
+    raw_money_flow = tp * volume
+    pos_money_flow = raw_money_flow.where(tp > tp.shift(1), 0)
+    neg_money_flow = raw_money_flow.where(tp < tp.shift(1), 0)
+    money_flow_ratio = SUM(pos_money_flow, time_period) / SUM(neg_money_flow, time_period)
+    return 100 - 100 / (1 + money_flow_ratio)
+
+
+# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
+# Lowest Low = lowest low for the look-back period
+# Highest High = highest high for the look-back period
+# %R is multiplied by -100 correct the inversion and move the decimal.
+def WILLR(high, low, close, time_period):
+    hh, ll = HH(high, time_period), LL(low, time_period)
+    return (hh - close) / (hh - ll) * (-100)
+
+
+# def TR(data, time_period):
+#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
+def TRIX(price, time_period):
+    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
+    return (tr - REF(tr)) / REF(tr) * 100
+
+
+# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
+# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
+def AROON(high, low, time_period):
+    aroon_up = MAXINDEX(high, time_period + 1) * 100 / time_period
+    aroon_down = MININDEX(low, time_period + 1) * 100 / time_period
+    return aroon_up, aroon_down
+
+
+# Aroon Oscillator = Aroon-Up  -  Aroon-Down
+def AROONOSC(high, low, time_period):
+    aroon_up, aroon_down = AROON(high, low, time_period)
+    return aroon_up - aroon_down
+
+# Ease of Movement (EMV) 简易波动指标 talib没有
+# Distance Moved = ((H + L)/2 - (Prior H + Prior L)/2)
+# Box Ratio = ((V/100,000,000)/(H - L))
+# 1-Period EMV = ((H + L)/2 - (Prior H + Prior L)/2) / ((V/100,000,000)/(H - L))
+# 14-Period Ease of Movement = 14-Period simple moving average of 1-period EMV
+def EMV(high, low, volume, time_period=14):
+    distance_moved = MEDIAN(high, low) - MEDIAN(REF(high), REF(low))
+    box_ratio = (volume / 100000000) / (high - low)
+    emv = distance_moved / box_ratio
+    return SMA(emv, time_period)
+
+
+###########################################################################
+
+
 # On Balance Volume (OBV) 能量潮指标
 # If the closing price is above the prior close price then:
 # Current OBV = Previous OBV + Current Volume
@@ -179,22 +235,6 @@ def ROC(price, time_period):
 def OBV(price, volume):
     pnv = volume.where(price > price.shift(1), -volume)[3:]
     return pnv.cumsum()
-
-
-# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
-# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
-def AROON(high, low, time_period):
-    aroon_up = high.rolling(time_period + 1).apply(
-        lambda h: pd.Series(h).idxmax() * 100.0 / time_period, raw='False')
-    aroon_down = low.rolling(time_period + 1).apply(
-        lambda l: pd.Series(l).idxmin() * 100.0 / time_period, raw='False')
-    return aroon_up, aroon_down
-
-
-# Aroon Oscillator = Aroon-Up  -  Aroon-Down
-def AROONOSC(high, low, time_period):
-    aroon_up, aroon_down = AROON(high, low, time_period)
-    return aroon_up - aroon_down
 
 
 # Percentage Price Oscillator (PPO) 价格震荡百分比指数 和talib有出入
@@ -214,19 +254,6 @@ def STOCHRSI(data, time_period=14):
     ll_rsi = LL(rsi, time_period)
     hh_rsi = HH(rsi, time_period)
     return (rsi - ll_rsi) / (hh_rsi - ll_rsi)
-
-
-# Ease of Movement (EMV) 简易波动指标 talib没有
-# Distance Moved = ((H + L)/2 - (Prior H + Prior L)/2)
-# Box Ratio = ((V/100,000,000)/(H - L))
-# 1-Period EMV = ((H + L)/2 - (Prior H + Prior L)/2) / ((V/100,000,000)/(H - L))
-# 14-Period Ease of Movement = 14-Period simple moving average of 1-period EMV
-def EMV(data, time_period=14):
-    h, l, v = data['High'], data['Low'], data['Volume']
-    distance_moved = (h + l) / 2 - (h.shift(1) + l.shift(1)) / 2
-    box_ratio = ((v / 100000000) / (h - l))
-    emv = distance_moved / box_ratio
-    return emv.rolling(time_period).mean()
 
 
 # TR : MAX(MAX((HIGH-LOW),ABS(REF(CLOSE,1)-HIGH)),ABS(REF(CLOSE,1)-LOW))
@@ -320,31 +347,12 @@ def ADXR(price, time_period):
     #         df['pdi%d' % time_period] + df['mdi%d' % time_period])).abs() * 100
     # return SMMA(df['dx'], time_period)
 
-    # %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
-    # Lowest Low = lowest low for the look-back period
-    # Highest High = highest high for the look-back period
-    # %R is multiplied by -100 correct the inversion and move the decimal.
 
-
-def WILLR(high, low, close, time_period):
-    hh, ll = HH(high, time_period), LL(low, time_period)
-    return (hh - close) / (hh - ll) * (-100)
-
-
-# def TR(data, time_period):
-#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
-
-
-def TRIX(price, time_period):
-    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
-    return (tr - REF(tr)) / REF(tr) * 100
-
-
-data = web.DataReader('GOOG', data_source='yahoo', start='1/1/2018', end='12/30/2018')
+data = web.DataReader('GOOG', data_source='yahoo', start='6/1/2018', end='12/30/2018')
 data = pd.DataFrame(data)
 high, low, close, volume = data['High'], data['Low'], data['Close'], data['Volume']
 print 'load data'
-fig = plt.figure(figsize=(7, 5))
+fig = plt.figure(figsize=(12, 5))
 ax = fig.add_subplot(2, 1, 1)
 
 # ax.plot(SMA(close, time_period=5))
@@ -411,10 +419,25 @@ ax = fig.add_subplot(2, 1, 1)
 # ax.plot(ROC(close, time_period=10))
 # ax.plot(talib.ROC(close, timeperiod=10))
 
-ax.plot(MFI(high, low, close, volume, time_period=14))
-ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
+# ax.plot(MFI(high, low, close, volume, time_period=14))
+# ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
+
+# ax.plot(WILLR(high, low, close, time_period=14))
+# ax.plot(talib.WILLR(high, low, close, timeperiod=14))
+
+# ax.plot(TRIX(close, time_period=14))
+# ax.plot(talib.TRIX(close, timeperiod=14))
+
+# a_u, a_d = AROON(high, low, time_period=14)
+# aroon_up, aroon_down = talib.AROON(high, low, timeperiod=14)
+# ax.plot(a_u)
+# ax.plot(a_d)
+# ax.plot(aroon_up)
+# ax.plot(aroon_down)
+
+# ax.plot(EMV(high, low, volume, time_period=14), label="emv")
 ##################################################################################################
-# emv = EMV(data, time_period=14)
+
 
 # atr = ATR(data, time_period=14)
 # atr1 = talib.ATR(data['High'], data['Low'], data['Close'], timeperiod=14)
@@ -422,13 +445,6 @@ ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
 # ax.plot(ATR(data, time_period=14))
 
 # ax.plot(atr1, label='t')
-
-# ax.plot(m)
-# ax.plot(s)
-# ax.bar(data.index, h)
-# ax.plot(macd, label="talib_macd")
-# ax.plot(macdsignal, label="talib_macd_signal")
-# ax.bar(data.index, macdhist)
 
 
 # ax.plot(rsi, label="rsi")
@@ -444,7 +460,7 @@ ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
 # ax.plot(cci, label="cci")
 # ax.plot(cci1)
 
-# ax.plot(emv, label="emv")
+
 
 # ax.plot(ADXR(data, time_period=14))
 # ax.plot(talib.ADXR(data['High'], data['Low'], data['Close'], timeperiod=14))
@@ -464,20 +480,12 @@ ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
 # ax.plot(talib.PLUS_DI(data['High'], data['Low'], data['Close'], timeperiod=14))
 # ax.plot(talib.MINUS_DI(data['High'], data['Low'], data['Close'], timeperiod=14))
 
-# ax.plot(WILLR(data, time_period=14))
-# ax.plot(talib.WILLR(data['High'], data['Low'], data['Close'], timeperiod=14))
-# ax.plot(TRIX(data['Close'], time_period=14))
-# ax.plot(talib.TRIX(data['Close'], timeperiod=14))
+
 # ax.plot(STOCHRSI(data['Close'], time_period=14))
 # ax.plot(talib.STOCHRSI(data['Close'], timeperiod=14))
 
 # ax.plot(AROON(data['High'], data['Low'], time_period=14))
-# h, l = AROON(data['High'], data['Low'], time_period=14)
-# h1, l1 = talib.AROON(data['High'], data['Low'], timeperiod=14)
-# ax.plot(h)
-# ax.plot(l)
-# ax.plot(h1)
-# ax.plot(l1)
+
 
 # ax.plot(AROONOSC(data['High'], data['Low'], time_period=14))
 # ax.plot(talib.AROONOSC(data['High'], data['Low'], timeperiod=14))
