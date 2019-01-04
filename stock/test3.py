@@ -48,6 +48,7 @@ import numpy as np
 
 df = pd.DataFrame()
 df['A'] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+print df['A'].clip_lower(0)
 # df['B'] = ['NAN', 3, 6, 10, 15, 21, 28, 36, 45]
 #
 # df['B'] = df['B'].shift(1) + df['A']
@@ -61,8 +62,8 @@ df['A'] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 # print df.rolling(3).apply(lambda x: (3 - (3 - pd.Series(x).idxmax() - 1)) / 3 * 100)
 
-data = web.DataReader('GOOG', data_source='yahoo', start='9/1/2018', end='12/30/2018')
-data = pd.DataFrame(data)
-high, low, close = data['High'], data['Low'], data['Close']
+# data = web.DataReader('GOOG', data_source='yahoo', start='9/1/2018', end='12/30/2018')
+# data = pd.DataFrame(data)
+# high, low, close = data['High'], data['Low'], data['Close']
 
 

@@ -6,6 +6,14 @@ import talib
 import numpy as np
 
 
+def DIFF(price, time_period=1):
+    return price.diff(time_period)
+
+
+def REF(price, time_period=1):
+    return price.shift(time_period)
+
+
 def MAX(price, time_period):
     return price.rolling(time_period).max()
 
@@ -16,6 +24,10 @@ def MIN(price, time_period):
 
 def STD(price, time_period):
     return price.rolling(time_period).std()
+
+
+def SUM(price, time_period):
+    return price.rolling(time_period).sum()
 
 
 def HH(high, time_period):
@@ -78,6 +90,38 @@ def BBANDS(price, time_period=5, nb_dev_up=2, nb_dev_dn=2):
     return upper_band, middle_band, lower_band
 
 
+# Stochastic Oscillator (KD) 随机指标
+# %K = (Current Close - Lowest Low)/(Highest High - Lowest Low) * 100
+# %D = 3-day SMA of %K
+# Lowest Low = lowest low for the look-back period
+# Highest High = highest high for the look-back period
+# %K is multiplied by 100 to move the decimal point two places
+# Fast Stochastic Oscillator:
+# Fast %K = %K basic calculation
+# Fast %D = 3-period SMA of Fast %K
+def STOCHF(high, low, close, fastk_period=5, fastd_period=3):
+    hh, ll = HH(high, fastk_period), LL(low, fastk_period)
+    fast_k = (close - ll) / (hh - ll) * 100
+    fast_d = SMA(fast_k, fastd_period)
+    return fast_k, fast_d
+
+
+# Slow Stochastic Oscillator:
+# Slow %K = Fast %K smoothed with 3-period SMA
+# Slow %D = 3-period SMA of Slow %K
+# Full Stochastic Oscillator:
+# Full %K = Fast %K smoothed with X-period SMA
+# Full %D = X-period SMA of Full %K
+# J = 3 * K - 2 * D(v)
+# J = 3 * D - 2 * K
+def STOCH(high, low, close, fastk_period=5, slowk_period=3, slowd_period=3):
+    hh, ll = HH(high, fastk_period), LL(low, fastk_period)
+    fast_k = (close - ll) / (hh - ll) * 100
+    slow_k = SMA(fast_k, slowk_period)
+    slow_d = SMA(slow_k, slowd_period)
+    return slow_k, slow_d
+
+
 # Relative Strength Index (RSI) 相对强弱指数（0~100）
 #               100
 # RSI = 100 - --------
@@ -87,17 +131,42 @@ def BBANDS(price, time_period=5, nb_dev_up=2, nb_dev_dn=2):
 # First Average Loss = Sum of Losses over the past 14 periods / 14
 # Average Gain = [(previous Average Gain) x 13 + current Gain] / 14.
 # Average Loss = [(previous Average Loss) x 13 + current Loss] / 14.
-def RSI(data, time_period=14):
-    diff = data.diff(1)
-    alpha = 1.0 / time_period
-    avg_gain = diff.clip_lower(0).ewm(alpha=alpha).mean()
-    avg_loss = diff.clip_upper(0).ewm(alpha=alpha).mean()
+def RSI(price, time_period=14):
+    diff = DIFF(price)
+    avg_gain = SMMA(diff.clip_lower(0), time_period)
+    avg_loss = SMMA(diff.clip_upper(0), time_period)
     rsi = 100 - 100 / (1 - avg_gain / avg_loss)
     return rsi
 
 
+# Typical Price = (High + Low + Close)/3
+# Raw Money Flow = Typical Price x Volume
+# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
+# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
+def MFI(high, low, close, volume, time_period):
+    tp = TP(high, low, close)
+    raw_money_flow = tp * volume
+    pos_money_flow = raw_money_flow.where(tp > tp.shift(1), 0)
+    neg_money_flow = raw_money_flow.where(tp < tp.shift(1), 0)
+    money_flow_ratio = SUM(pos_money_flow, time_period) / SUM(neg_money_flow, time_period)
+    return 100 - 100 / (1 + money_flow_ratio)
 
 
+# Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
+# CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
+# Typical Price (TP) = (High + Low + Close)/3
+# Constant = .015
+def CCI(high, low, close, time_period=20):
+    tp = TP(high, low, close)
+    tp_sma = SMA(tp, time_period)
+    tp_std = STD(tp, time_period)
+    return (tp - tp_sma) / (.015 * tp_std)
+
+
+# ROC - Rate of change 变动率指标
+# ROC = [(Close - Close n periods ago) / (Close n periods ago)] * 100
+def ROC(price, time_period):
+    return DIFF(price, time_period) / REF(price, time_period) * 100
 
 
 # On Balance Volume (OBV) 能量潮指标
@@ -110,22 +179,6 @@ def RSI(data, time_period=14):
 def OBV(price, volume):
     pnv = volume.where(price > price.shift(1), -volume)[3:]
     return pnv.cumsum()
-
-
-# Typical Price = (High + Low + Close)/3
-# Raw Money Flow = Typical Price x Volume
-# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
-# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
-def MFI(high, low, close, volume, time_period):
-    tp = TP(high, low, close)
-    raw_money_flow = tp * volume
-    pos_money_flow = raw_money_flow.where(tp > tp.shift(1), 0)
-    neg_money_flow = raw_money_flow.where(tp < tp.shift(1), 0)
-    pos_money_flow_sum = pos_money_flow.rolling(time_period).sum()
-    neg_money_flow_sum = neg_money_flow.rolling(time_period).sum()
-    money_flow_ratio = pos_money_flow_sum / neg_money_flow_sum
-    money_flow_index = 100 - 100 / (1 + money_flow_ratio)
-    return money_flow_index
 
 
 # Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
@@ -155,70 +208,12 @@ def PPO(price, fast_period=12, slow_period=26, signal_period=9):
     return ppo, ppo_signal, ppo_histogram
 
 
-
-
-
 # StochRSI = (RSI - Lowest Low RSI) / (Highest High RSI - Lowest Low RSI)
 def STOCHRSI(data, time_period=14):
     rsi = RSI(data, time_period)
     ll_rsi = LL(rsi, time_period)
     hh_rsi = HH(rsi, time_period)
     return (rsi - ll_rsi) / (hh_rsi - ll_rsi)
-
-
-# KDJ
-# %K = (Current Close - Lowest Low)/(Highest High - Lowest Low) * 100
-# %D = 3-day SMA of %K
-# Lowest Low = lowest low for the look-back period
-# Highest High = highest high for the look-back period
-# %K is multiplied by 100 to move the decimal point two places
-# Fast Stochastic Oscillator:
-# Fast %K = %K basic calculation
-# Fast %D = 3-period SMA of Fast %K
-
-def STOCHF(data, fastk_period=5, fastd_period=3):
-    h, l, c = data['High'], data['Low'], data['Close']
-    hh, ll = HH(h, fastk_period), LL(l, fastk_period)
-    fast_k = (c - ll) / (hh - ll) * 100
-    fast_d = SMA(fast_k, fastd_period)
-    return fast_k, fast_d
-
-
-# Slow Stochastic Oscillator:
-# Slow %K = Fast %K smoothed with 3-period SMA
-# Slow %D = 3-period SMA of Slow %K
-# Full Stochastic Oscillator:
-# Full %K = Fast %K smoothed with X-period SMA
-# Full %D = X-period SMA of Full %K
-# J = 3 * K - 2 * D(v)
-# J = 3 * D - 2 * K
-def STOCH(data, fastk_period=5, slowk_period=3, slowd_period=3):
-    h, l, c = data['High'], data['Low'], data['Close']
-    hh, ll = HH(h, fastk_period), LL(l, fastk_period)
-    fast_k = (c - ll) / (hh - ll) * 100
-    slow_k = SMA(fast_k, slowk_period)
-    slow_d = SMA(slow_k, slowd_period)
-    return slow_k, slow_d
-
-
-# Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
-# CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
-# Typical Price (TP) = (High + Low + Close)/3
-# Constant = .015
-def CCI(data, time_period=20):
-    h, l, c = data['High'], data['Low'], data['Close']
-    # hh, ll = h.rolling(time_period).max(), l.rolling(time_period).min()
-    tp = (h + l + c) / 3
-    tp_sma = SMA(tp, time_period)
-    tp_std = tp.rolling(time_period).std()
-    return (tp - tp_sma) / (.015 * tp_std)
-
-
-# ROC - Rate of change 变动率指标
-# ROC = [(Close - Close n periods ago) / (Close n periods ago)] * 100
-def ROC(data, time_period):
-    c = data['Close']
-    return (c - c.shift(time_period)) / c.shift(time_period) * 100
 
 
 # Ease of Movement (EMV) 简易波动指标 talib没有
@@ -244,7 +239,7 @@ def TR1(high, low, close):
 
 
 def TR(data):
-    return TR(data['High'], data['Low'], data['Close'])
+    return TR1(data['High'], data['Low'], data['Close'])
 
 
 # ATR : SMMA(TR,N)
@@ -289,19 +284,20 @@ def DI(data, time_period):
 
 # DX = (DI DIF/DI SUM)*100
 # DX = |(+DI14)-(-DI14)|/|(+DI14)+(-DI14)|
-def DX(data, time_period):
-    pdi, mdi = DI(data, time_period)
-    return (pdi - mdi).abs() / (pdi + mdi) * 100  # DX
+def DX(price, time_period):
+    pdi, mdi = DI(price, time_period)
+    return (pdi - mdi).abs() / (pdi + mdi) * 100.0  # DX
 
 
 # ADX = SMMA(DX,N)
-def ADX(data, time_period):
-    return SMMA(DX(data, time_period), time_period)
+def ADX(price, time_period):
+    return SMMA(DX(price, time_period), time_period)
 
 
 # ADXR = (ADX+REF(ADX,N))/2
-def ADXR(data, time_period):
-    return (ADX(data, time_period) + ADX(data, time_period).shift(time_period)) / 2
+def ADXR(price, time_period):
+    adx = ADX(price, time_period)
+    return (adx + REF(adx, time_period)) / 2
 
     # df['hd'] = h - h.shift(1)
     # df.ix[df['hd'] < 0, 'hd'] = 0
@@ -324,69 +320,109 @@ def ADXR(data, time_period):
     #         df['pdi%d' % time_period] + df['mdi%d' % time_period])).abs() * 100
     # return SMMA(df['dx'], time_period)
 
+    # %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
+    # Lowest Low = lowest low for the look-back period
+    # Highest High = highest high for the look-back period
+    # %R is multiplied by -100 correct the inversion and move the decimal.
 
-# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
-# Lowest Low = lowest low for the look-back period
-# Highest High = highest high for the look-back period
-# %R is multiplied by -100 correct the inversion and move the decimal.
-def WILLR(data, time_period):
-    h, l, c = data['High'], data['Low'], data['Close']
-    hh, ll = HH(h, time_period), LL(l, time_period)
-    return (hh - c) / (hh - ll) * (-100)
+
+def WILLR(high, low, close, time_period):
+    hh, ll = HH(high, time_period), LL(low, time_period)
+    return (hh - close) / (hh - ll) * (-100)
 
 
 # def TR(data, time_period):
 #     return EMA(EMA(EMA(data, time_period), time_period), time_period)
 
 
-def TRIX(data, time_period):
-    tr = EMA(EMA(EMA(data, time_period), time_period), time_period)
-    return (tr - tr.shift(1)) / tr.shift(1) * 100
+def TRIX(price, time_period):
+    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
+    return (tr - REF(tr)) / REF(tr) * 100
 
 
-data = web.DataReader('GOOG', data_source='yahoo', start='9/1/2018', end='12/30/2018')
+data = web.DataReader('GOOG', data_source='yahoo', start='1/1/2018', end='12/30/2018')
 data = pd.DataFrame(data)
-Close = data['Close']
-
-# m, s, h = MACD(Close, fast_period=12, slow_period=26, signal_period=9)
-# macd, macdsignal, macdhist = talib.MACD(Close, fastperiod=12, slowperiod=26, signalperiod=9)
-
-# u, m, l = BBANDS(Close, 20)
-# upper, middle, lower = talib.BBANDS(Close, 20)
-
-wma = WMA(Close, time_period=5)
-wma1 = talib.WMA(Close, timeperiod=5)
-
-rsi = RSI(Close, time_period=14)
-rsi2 = talib.RSI(Close, 14)
-
-f, k = STOCH(data, fastk_period=5, slowk_period=3, slowd_period=3)
-f1, k1 = talib.STOCH(data['High'], data['Low'], data['Close'], fastk_period=5, slowk_period=3, slowd_period=3)
-
-f, k = STOCHF(data, fastk_period=5, fastd_period=3)
-f1, k1 = talib.STOCHF(data['High'], data['Low'], data['Close'], fastk_period=5, fastd_period=3)
-
-roc = ROC(data, time_period=10)
-roc1 = talib.ROC(data['Close'], timeperiod=10)
-
-cci = CCI(data, time_period=14)
-cci1 = talib.CCI(data['High'], data['Low'], data['Close'], timeperiod=14)
-
-emv = EMV(data, time_period=14)
-
-# atr = ATR(data, time_period=14)
-atr1 = talib.ATR(data['High'], data['Low'], data['Close'], timeperiod=14)
-
+high, low, close, volume = data['High'], data['Low'], data['Close'], data['Volume']
+print 'load data'
 fig = plt.figure(figsize=(7, 5))
 ax = fig.add_subplot(2, 1, 1)
 
+# ax.plot(SMA(close, time_period=5))
+# ax.plot(talib.SMA(close, timeperiod=5))
+
+# ax.plot(WMA(close, time_period=5))
+# ax.plot(talib.WMA(close, timeperiod=5))
+
+# ax.plot(EMA(close, time_period=12))
+# ax.plot(talib.EMA(close, timeperiod=12))
+# ax.plot(EMA(close, time_period=26))
+# ax.plot(talib.EMA(close, timeperiod=26))
+
+# ax.plot(EMA(close, time_period=12) - EMA(close, time_period=26))
+# ax.plot(talib.EMA(close, timeperiod=12) - talib.EMA(close, timeperiod=26))
+
+# u, m, l = BBANDS(close, 20)
+# upper, middle, lower = talib.BBANDS(close, 20)
+# ax.plot(u)
+# ax.plot(m)
+# ax.plot(l)
+# ax.plot(upper)
+# ax.plot(middle)
+# ax.plot(lower)
+
+# m, s, h = MACD(close, fast_period=12, slow_period=26, signal_period=9)
+# macd, macdsignal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
+# ax.plot(m)
+# ax.plot(s)
+# ax.bar(data.index, h)
+# ax.plot(macd)
+# ax.plot(macdsignal)
+# ax.bar(data.index, macdhist)
+
+# PPO有问题********************
+# p, p_s, p_h = PPO(close, fast_period=12, slow_period=26, signal_period=9)
+# ppo_hist = talib.PPO(close, fastperiod=12, slowperiod=26)
+# ax.plot(p)
+# ax.plot(p_s)
+# ax.plot(p_h)
+# ax.plot(data.index, ppo_hist)
+
+# s_k, s_d = STOCH(high, low, close, fastk_period=5, slowk_period=3, slowd_period=3)
+# slow_k, slow_d = talib.STOCH(high, low, close, fastk_period=5, slowk_period=3, slowd_period=3)
+# ax.plot(s_k)
+# ax.plot(s_d)
+# ax.plot(slow_k)
+# ax.plot(slow_d)
+
+# f_k, f_d = STOCHF(high, low, close, fastk_period=5, fastd_period=3)
+# fast_k, fast_d = talib.STOCHF(high, low, close, fastk_period=5, fastd_period=3)
+# ax.plot(f_k)
+# ax.plot(f_d)
+# ax.plot(fast_k)
+# ax.plot(fast_d)
+
+# ax.plot(RSI(close, time_period=14))
+# ax.plot(talib.RSI(close, timeperiod=14))
+
+# CCI有差别********************
+# ax.plot(CCI(high, low, close, time_period=14))
+# ax.plot(talib.CCI(high, low, close, timeperiod=14))
+
+# ax.plot(ROC(close, time_period=10))
+# ax.plot(talib.ROC(close, timeperiod=10))
+
+ax.plot(MFI(high, low, close, volume, time_period=14))
+ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
+##################################################################################################
+# emv = EMV(data, time_period=14)
+
+# atr = ATR(data, time_period=14)
+# atr1 = talib.ATR(data['High'], data['Low'], data['Close'], timeperiod=14)
+
 # ax.plot(ATR(data, time_period=14))
-# ax.plot(WMA(TR(data), time_period=14))
-# ax.plot(SMA(TR(data), time_period=14))
-# ax.plot(EMA(TR(data), time_period=14))
+
 # ax.plot(atr1, label='t')
-# ax.plot(wma)
-# ax.plot(wma1)
+
 # ax.plot(m)
 # ax.plot(s)
 # ax.bar(data.index, h)
@@ -394,23 +430,6 @@ ax = fig.add_subplot(2, 1, 1)
 # ax.plot(macdsignal, label="talib_macd_signal")
 # ax.bar(data.index, macdhist)
 
-# ppo, ppo_signal, ppo_hist = PPO(data['Close'], fast_period=12, slow_period=26, signal_period=9)
-# ax.plot(ppo, label="talib_macd")
-# ax.plot(ppo_signal, label="talib_macd_signal")
-# ax.plot(data.index, ppo)
-# ax.plot(data.index, ppo_signal)
-# ax.plot(data.index, ppo_hist)
-
-# ppo_hist1 = talib.PPO(data['Close'], fastperiod=12, slowperiod=26, matype=1)
-# ax.plot(data.index, ppo_hist1)
-
-# ax.plot(u)
-# ax.plot(m)
-# ax.plot(l)
-#
-# ax.plot(upper)
-# ax.plot(middle)
-# ax.plot(lower)
 
 # ax.plot(rsi, label="rsi")
 # ax.plot(rsi2)
@@ -463,8 +482,6 @@ ax = fig.add_subplot(2, 1, 1)
 # ax.plot(AROONOSC(data['High'], data['Low'], time_period=14))
 # ax.plot(talib.AROONOSC(data['High'], data['Low'], timeperiod=14))
 
-# ax.plot(MFI(data['High'], data['Low'], data['Close'], data['Volume'], time_period=14))
-# ax.plot(talib.MFI(data['High'], data['Low'], data['Close'], data['Volume'], timeperiod=14))
 
 # ax.plot(OBV(data['High'], data['Volume']))
 # ax.plot(talib.OBV(data['High'], data['Volume']))
