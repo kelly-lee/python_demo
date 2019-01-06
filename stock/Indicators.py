@@ -14,12 +14,28 @@ def REF(price, time_period=1):
     return price.shift(time_period)
 
 
+def PCT_CHANGE(price, time_period=1):
+    return price.pct_change(time_period)
+
+
+def DRCT(price, time_period=1):
+    return PCT_CHANGE(price, time_period).apply(lambda p: np.sign(p))
+
+
+def MEDIAN(high, low):
+    return (high + low) / 2
+
+
+def TP(high, low, close):
+    return (high + low + close) / 3
+
+
 def MAX(price, time_period):
     return price.rolling(time_period).max()
 
 
 def MAXINDEX(price, time_period):
-    return price.rolling(time_period).apply(lambda h: pd.Series(h).idxmax(), raw=True)
+    return price.rolling(time_period).apply(lambda p: pd.Series(p).idxmax(), raw=True)
 
 
 def MIN(price, time_period):
@@ -27,19 +43,7 @@ def MIN(price, time_period):
 
 
 def MININDEX(price, time_period):
-    return price.rolling(time_period).apply(lambda h: pd.Series(h).idxmin(), raw=True)
-
-
-def STD(price, time_period):
-    return price.rolling(time_period).std()
-
-
-def SUM(price, time_period):
-    return price.rolling(time_period).sum()
-
-
-def MEDIAN(high, low):
-    return (high + low) / 2
+    return price.rolling(time_period).apply(lambda p: pd.Series(p).idxmin(), raw=True)
 
 
 def HH(high, time_period):
@@ -50,8 +54,12 @@ def LL(low, time_period):
     return MIN(low, time_period)
 
 
-def TP(high, low, close):
-    return (high + low + close) / 3
+def STD(price, time_period):
+    return price.rolling(time_period).std()
+
+
+def SUM(price, time_period):
+    return price.rolling(time_period).sum()
 
 
 # Simple Moving Average (SMA) 简单移动平均线
@@ -78,6 +86,30 @@ def WMA(price, time_period):
 
 def SMMA(price, time_period):
     return price.ewm(ignore_na=False, alpha=1.0 / time_period, min_periods=0, adjust=True).mean()
+
+
+# 双指数移动平均线技术指标
+# MA_Type: 0=SMA, 1=EMA, 2=WMA, 3=DEMA, 4=TEMA, 5=TRIMA, 6=KAMA, 7=MAMA, 8=T3 (Default=SMA)
+def DEMA(price, time_period):
+    return 2 * EMA(price, time_period) - EMA(EMA(price, time_period), time_period)
+
+
+# 3 * EMA(Price, N, i) - 3 * EMA2(Price, N, i) + EMA3(Price, N, i)
+def TEMA(price, time_period):
+    return 3 * EMA(price, time_period) - 3 * EMA(EMA(price, time_period), time_period) + EMA(
+        EMA(EMA(price, time_period), time_period), time_period)
+
+
+# (p+2*p1+3*p2+2*p3+p4)/9
+def TRIMA(price, time_period):
+    return
+
+
+# def TR(data, time_period):
+#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
+def TRIX(price, time_period):
+    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
+    return (tr - REF(tr)) / REF(tr) * 100
 
 
 # Moving Average Convergence/Divergence Oscillator (MACD) 平滑异同移动平均线
@@ -151,21 +183,10 @@ def RSI(price, time_period=14):
     return rsi
 
 
-# Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
-# CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
-# Typical Price (TP) = (High + Low + Close)/3
-# Constant = .015
-def CCI(high, low, close, time_period=20):
-    tp = TP(high, low, close)
-    tp_sma = SMA(tp, time_period)
-    tp_std = STD(tp, time_period)
-    return (tp - tp_sma) / (.015 * tp_std)
-
-
 # ROC - Rate of change 变动率指标
 # ROC = [(Close - Close n periods ago) / (Close n periods ago)] * 100
-def ROC(price, time_period):
-    return DIFF(price, time_period) / REF(price, time_period) * 100
+def ROC(price, time_period=1):
+    return PCT_CHANGE(price, time_period) * 100
 
 
 # Typical Price = (High + Low + Close)/3
@@ -175,8 +196,8 @@ def ROC(price, time_period):
 def MFI(high, low, close, volume, time_period):
     tp = TP(high, low, close)
     raw_money_flow = tp * volume
-    pos_money_flow = raw_money_flow.where(tp > tp.shift(1), 0)
-    neg_money_flow = raw_money_flow.where(tp < tp.shift(1), 0)
+    pos_money_flow = raw_money_flow.where(tp > REF(tp), 0)
+    neg_money_flow = raw_money_flow.where(tp < REF(tp), 0)
     money_flow_ratio = SUM(pos_money_flow, time_period) / SUM(neg_money_flow, time_period)
     return 100 - 100 / (1 + money_flow_ratio)
 
@@ -188,13 +209,6 @@ def MFI(high, low, close, volume, time_period):
 def WILLR(high, low, close, time_period):
     hh, ll = HH(high, time_period), LL(low, time_period)
     return (hh - close) / (hh - ll) * (-100)
-
-
-# def TR(data, time_period):
-#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
-def TRIX(price, time_period):
-    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
-    return (tr - REF(tr)) / REF(tr) * 100
 
 
 # Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
@@ -210,6 +224,7 @@ def AROONOSC(high, low, time_period):
     aroon_up, aroon_down = AROON(high, low, time_period)
     return aroon_up - aroon_down
 
+
 # Ease of Movement (EMV) 简易波动指标 talib没有
 # Distance Moved = ((H + L)/2 - (Prior H + Prior L)/2)
 # Box Ratio = ((V/100,000,000)/(H - L))
@@ -222,10 +237,71 @@ def EMV(high, low, volume, time_period=14):
     return SMA(emv, time_period)
 
 
+# TR : MAX(MAX((HIGH-LOW),ABS(REF(CLOSE,1)-HIGH)),ABS(REF(CLOSE,1)-LOW))
+def TR(high, low, close):
+    df = pd.DataFrame()
+    df['hl'] = (high - low).abs()
+    df['hcl'] = (REF(close) - high).abs()
+    df['cll'] = (REF(close) - low).abs()
+    return df.max(axis=1)
+
+
+# ATR : SMMA(TR,N)
+def ATR(high, low, close, time_period):
+    return SMMA(TR(high, low, close), time_period)
+
+
+# HD = HIGH-REF(HIGH,1)
+# LD = REF(LOW,1)-LOW
+# +DM = SMMA(IF(HD>0 && HD>LD,HD,0),N)
+# -DM = SMMA(IF(LD>0 && LD>HD,LD,0),N)
+def _DM_(high, low, time_period):
+    hd = DIFF(high)
+    ld = -DIFF(low)
+    pdm = SMMA(hd.where((hd > 0) & (hd > ld), 0), time_period)  # +DM
+    mdm = SMMA(ld.where((ld > 0) & (hd < ld), 0), time_period)  # -DM
+    return pdm, mdm
+
+
+def DM(high, low, time_period):
+    pdm, mdm = _DM_(high, low, time_period)
+    return pdm * time_period, mdm * time_period
+
+
+# MTR:=EXPMEMA(MAX(MAX(HIGH-LOW,ABS(HIGH-REF(CLOSE,1))),ABS(REF(CLOSE,1)-LOW)),N) 不对
+# MTR = SMMA(TR,N)
+# +DI = +DM/TR*100
+# -DI = -DM/TR*100
+def DI(high, low, close, time_period):
+    pdm, mdm = _DM_(high, low, time_period)
+    tr = SMMA(TR(high, low, close), time_period)
+    pdi = pdm / tr * 100  # +DI
+    mdi = mdm / tr * 100  # -DI
+    return pdi, mdi
+
+
+# DX = ABS(MDI-PDI)/(MDI+PDI)*100
+def DX(high, low, close, time_period):
+    pdi, mdi = DI(high, low, close, time_period)
+    return (pdi - mdi).abs() / (pdi + mdi) * 100.0  # DX
+
+
+# ADX = SMMA(DX,N)
+def ADX(high, low, close, time_period):
+    return SMMA(DX(high, low, close, time_period), time_period)
+
+
+# ADXR:EXPMEMA(ADX,M) 不对
+# ADXR = (ADX+REF(ADX,N))/2
+def ADXR(high, low, close, time_period):
+    adx = ADX(high, low, close, time_period)
+    return (adx + REF(adx, time_period)) / 2
+
+
 ###########################################################################
 
 
-# On Balance Volume (OBV) 能量潮指标
+# On Balance Volume (OBV) 能量潮指标 和talib有偏差
 # If the closing price is above the prior close price then:
 # Current OBV = Previous OBV + Current Volume
 # If the closing price is below the prior close price then:
@@ -233,8 +309,19 @@ def EMV(high, low, volume, time_period=14):
 # If the closing prices equals the prior close price then:
 # Current OBV = Previous OBV (no change)
 def OBV(price, volume):
-    pnv = volume.where(price > price.shift(1), -volume)[3:]
+    pnv = volume.where(price > REF(price), -volume)
     return pnv.cumsum()
+
+
+# Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
+# CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
+# Typical Price (TP) = (High + Low + Close)/3
+# Constant = .015
+def CCI(high, low, close, time_period=20):
+    tp = TP(high, low, close)
+    tp_sma = SMA(tp, time_period)
+    tp_std = STD(tp, time_period)
+    return (tp - tp_sma) / (.015 * tp_std)
 
 
 # Percentage Price Oscillator (PPO) 价格震荡百分比指数 和talib有出入
@@ -256,244 +343,5 @@ def STOCHRSI(data, time_period=14):
     return (rsi - ll_rsi) / (hh_rsi - ll_rsi)
 
 
-# TR : MAX(MAX((HIGH-LOW),ABS(REF(CLOSE,1)-HIGH)),ABS(REF(CLOSE,1)-LOW))
-def TR1(high, low, close):
-    df = pd.DataFrame()
-    df['hl'] = (high - low).abs()
-    df['hcl'] = (close.shift(1) - high).abs()
-    df['cll'] = (close.shift(1) - low).abs()
-    return df.max(axis=1)
-
-
-def TR(data):
-    return TR1(data['High'], data['Low'], data['Close'])
-
-
-# ATR : SMMA(TR,N)
-def ATR(data, time_period):
-    return SMMA(TR(data), time_period)
-
-
-# HD = MAX(H-REF(H),0)
-# LD = MAX(REF(L)-L,0)
-# +DM = SMMA(HD>LD?HD:0)
-# -DM = SMMA(HD<LD?LD:0)
-def _DM_(data, time_period):
-    h, l = data['High'], data['Low']
-    df = pd.DataFrame()
-    hd = h - h.shift(1)
-    hd = (hd + hd.abs()) / 2
-    ld = l.shift(1) - l
-    ld = (ld + ld.abs()) / 2
-    tr = df['tr'] = TR(data)  # 去掉这行报错，不知为什么
-
-    df['pdm'] = np.where(hd > ld, hd, 0)
-    df['mdm'] = np.where(hd < ld, ld, 0)
-    pdm_smma = SMMA(df['pdm'], time_period)  # +DM
-    mdm_smma = SMMA(df['mdm'], time_period)  # -DM
-    return pdm_smma, mdm_smma
-
-
-def DM(data, time_period):
-    pdm_smma, mdm_smma = _DM_(data, time_period)
-    return pdm_smma * time_period, mdm_smma * time_period
-
-
-# +DI = +DM/TR*100
-# -DI = -DM/TR*100
-def DI(data, time_period):
-    pdm, mdm = _DM_(data, time_period)
-    tr = SMMA(TR(data), time_period)
-    pdi = pdm / tr * 100  # +DI
-    mdi = mdm / tr * 100  # -DI
-    return pdi, mdi
-
-
-# DX = (DI DIF/DI SUM)*100
-# DX = |(+DI14)-(-DI14)|/|(+DI14)+(-DI14)|
-def DX(price, time_period):
-    pdi, mdi = DI(price, time_period)
-    return (pdi - mdi).abs() / (pdi + mdi) * 100.0  # DX
-
-
-# ADX = SMMA(DX,N)
-def ADX(price, time_period):
-    return SMMA(DX(price, time_period), time_period)
-
-
-# ADXR = (ADX+REF(ADX,N))/2
-def ADXR(price, time_period):
-    adx = ADX(price, time_period)
-    return (adx + REF(adx, time_period)) / 2
-
-    # df['hd'] = h - h.shift(1)
-    # df.ix[df['hd'] < 0, 'hd'] = 0
-    # df['ld'] = l.shift(1) - l
-    # df.ix[df['ld'] < 0, 'ld'] = 0
-    # df['tr'] = TR(data)
-    #
-    # df.ix[df['hd'] > df['ld'], 'pdm'] = df['hd']
-    # df.ix[df['hd'] < df['ld'], 'mdm'] = df['ld']
-    # df['pdm'].fillna(0, inplace=True)
-    # df['mdm'].fillna(0, inplace=True)
-    #
-    # df['pdm%d' % time_period] = SMMA(df['pdm'], time_period=time_period)
-    # df['mdm%d' % time_period] = SMMA(df['mdm'], time_period=time_period)
-    # df['tr%d' % time_period] = SMMA(df['tr'], time_period=time_period)
-    #
-    # df['pdi%d' % time_period] = df['pdm%d' % time_period] / df['tr%d' % time_period] * 100
-    # df['mdi%d' % time_period] = df['mdm%d' % time_period] / df['tr%d' % time_period] * 100
-    # df['dx'] = ((df['pdi%d' % time_period] - df['mdi%d' % time_period]) / (
-    #         df['pdi%d' % time_period] + df['mdi%d' % time_period])).abs() * 100
-    # return SMMA(df['dx'], time_period)
-
-
-data = web.DataReader('GOOG', data_source='yahoo', start='6/1/2018', end='12/30/2018')
-data = pd.DataFrame(data)
-high, low, close, volume = data['High'], data['Low'], data['Close'], data['Volume']
-print 'load data'
-fig = plt.figure(figsize=(12, 5))
-ax = fig.add_subplot(2, 1, 1)
-
-# ax.plot(SMA(close, time_period=5))
-# ax.plot(talib.SMA(close, timeperiod=5))
-
-# ax.plot(WMA(close, time_period=5))
-# ax.plot(talib.WMA(close, timeperiod=5))
-
-# ax.plot(EMA(close, time_period=12))
-# ax.plot(talib.EMA(close, timeperiod=12))
-# ax.plot(EMA(close, time_period=26))
-# ax.plot(talib.EMA(close, timeperiod=26))
-
-# ax.plot(EMA(close, time_period=12) - EMA(close, time_period=26))
-# ax.plot(talib.EMA(close, timeperiod=12) - talib.EMA(close, timeperiod=26))
-
-# u, m, l = BBANDS(close, 20)
-# upper, middle, lower = talib.BBANDS(close, 20)
-# ax.plot(u)
-# ax.plot(m)
-# ax.plot(l)
-# ax.plot(upper)
-# ax.plot(middle)
-# ax.plot(lower)
-
-# m, s, h = MACD(close, fast_period=12, slow_period=26, signal_period=9)
-# macd, macdsignal, macdhist = talib.MACD(close, fastperiod=12, slowperiod=26, signalperiod=9)
-# ax.plot(m)
-# ax.plot(s)
-# ax.bar(data.index, h)
-# ax.plot(macd)
-# ax.plot(macdsignal)
-# ax.bar(data.index, macdhist)
-
-# PPO有问题********************
-# p, p_s, p_h = PPO(close, fast_period=12, slow_period=26, signal_period=9)
-# ppo_hist = talib.PPO(close, fastperiod=12, slowperiod=26)
-# ax.plot(p)
-# ax.plot(p_s)
-# ax.plot(p_h)
-# ax.plot(data.index, ppo_hist)
-
-# s_k, s_d = STOCH(high, low, close, fastk_period=5, slowk_period=3, slowd_period=3)
-# slow_k, slow_d = talib.STOCH(high, low, close, fastk_period=5, slowk_period=3, slowd_period=3)
-# ax.plot(s_k)
-# ax.plot(s_d)
-# ax.plot(slow_k)
-# ax.plot(slow_d)
-
-# f_k, f_d = STOCHF(high, low, close, fastk_period=5, fastd_period=3)
-# fast_k, fast_d = talib.STOCHF(high, low, close, fastk_period=5, fastd_period=3)
-# ax.plot(f_k)
-# ax.plot(f_d)
-# ax.plot(fast_k)
-# ax.plot(fast_d)
-
-# ax.plot(RSI(close, time_period=14))
-# ax.plot(talib.RSI(close, timeperiod=14))
-
-# CCI有差别********************
-# ax.plot(CCI(high, low, close, time_period=14))
-# ax.plot(talib.CCI(high, low, close, timeperiod=14))
-
-# ax.plot(ROC(close, time_period=10))
-# ax.plot(talib.ROC(close, timeperiod=10))
-
-# ax.plot(MFI(high, low, close, volume, time_period=14))
-# ax.plot(talib.MFI(high, low, close, volume, timeperiod=14))
-
-# ax.plot(WILLR(high, low, close, time_period=14))
-# ax.plot(talib.WILLR(high, low, close, timeperiod=14))
-
-# ax.plot(TRIX(close, time_period=14))
-# ax.plot(talib.TRIX(close, timeperiod=14))
-
-# a_u, a_d = AROON(high, low, time_period=14)
-# aroon_up, aroon_down = talib.AROON(high, low, timeperiod=14)
-# ax.plot(a_u)
-# ax.plot(a_d)
-# ax.plot(aroon_up)
-# ax.plot(aroon_down)
-
-# ax.plot(EMV(high, low, volume, time_period=14), label="emv")
-##################################################################################################
-
-
-# atr = ATR(data, time_period=14)
-# atr1 = talib.ATR(data['High'], data['Low'], data['Close'], timeperiod=14)
-
-# ax.plot(ATR(data, time_period=14))
-
-# ax.plot(atr1, label='t')
-
-
-# ax.plot(rsi, label="rsi")
-# ax.plot(rsi2)
-# ax.plot(f)
-# ax.plot(k)
-# ax.plot(f1)
-# ax.plot(k1)
-
-# ax.plot(roc)
-# ax.plot(roc1)
-
-# ax.plot(cci, label="cci")
-# ax.plot(cci1)
-
-
-
-# ax.plot(ADXR(data, time_period=14))
-# ax.plot(talib.ADXR(data['High'], data['Low'], data['Close'], timeperiod=14))
-
-# pdm, mdm = DM(data, time_period=14)
-# ax.plot(pdm)
-# ax.plot(mdm)
-# ax.plot(talib.MINUS_DM(data['High'], data['Low'], timeperiod=14))
-# ax.plot(talib.PLUS_DM(data['High'], data['Low'], timeperiod=14))
-#
-# ax.plot(DX(data, time_period=14))
-# ax.plot(talib.DX(data['High'], data['Low'], data['Close'], timeperiod=14))
-
-# pdi, mdi = DI(data, time_period=14)
-# ax.plot(pdi)
-# ax.plot(mdi)
-# ax.plot(talib.PLUS_DI(data['High'], data['Low'], data['Close'], timeperiod=14))
-# ax.plot(talib.MINUS_DI(data['High'], data['Low'], data['Close'], timeperiod=14))
-
-
-# ax.plot(STOCHRSI(data['Close'], time_period=14))
-# ax.plot(talib.STOCHRSI(data['Close'], timeperiod=14))
-
-# ax.plot(AROON(data['High'], data['Low'], time_period=14))
-
-
-# ax.plot(AROONOSC(data['High'], data['Low'], time_period=14))
-# ax.plot(talib.AROONOSC(data['High'], data['Low'], timeperiod=14))
-
-
-# ax.plot(OBV(data['High'], data['Volume']))
-# ax.plot(talib.OBV(data['High'], data['Volume']))
-
-plt.legend()
-plt.show()
-# print ADX(data, time_period=14)
+def CROSS(close, fast, slow):
+    return
