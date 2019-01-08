@@ -1,0 +1,34 @@
+BBANDS               Bollinger Bands
+MA                   Moving average
+SMA                  Simple Moving Average
+EMA                  Exponential Moving Average
+WMA                  Weighted Moving Average
+DEMA                 Double Exponential Moving Average
+TEMA                 Triple Exponential Moving Average
+SMMA
+
+
+
+
+HT_TRENDLINE         Hilbert Transform - Instantaneous Trendline
+KAMA                 Kaufman Adaptive Moving Average
+R = Change/Volatility
+Change = ABS(Close - Close (10 periods ago))
+Volatility = Sum10(ABS(Close - Prior Close))
+Volatility is the sum of the absolute value of the last ten price changes (Close - Prior Close).
+SC = [ER x (fastest SC - slowest SC) + slowest SC]2
+SC = [ER x (2/(2+1) - 2/(30+1)) + 2/(30+1)]2
+Current KAMA = Prior KAMA + SC x (Price - Prior KAMA)
+
+
+MAMA                 MESA Adaptive Moving Average
+MAVP                 Moving average with variable period
+MIDPOINT             MidPoint over period
+MIDPRICE             Midpoint Price over period
+SAR                  Parabolic SAR
+SAREXT               Parabolic SAR - Extended
+T3                   Triple Exponential Moving Average (T3)
+TRIMA                Triangular Moving Average
+
+
+

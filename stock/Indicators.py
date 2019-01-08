@@ -14,6 +14,10 @@ def REF(price, time_period=1):
     return price.shift(time_period)
 
 
+def ABS(price):
+    return price.abs()
+
+
 def PCT_CHANGE(price, time_period=1):
     return price.pct_change(time_period)
 
@@ -29,6 +33,8 @@ def MEDIAN(high, low):
 def TP(high, low, close):
     return (high + low + close) / 3
 
+
+######################################################################################
 
 def MAX(price, time_period):
     return price.rolling(time_period).max()
@@ -61,6 +67,8 @@ def STD(price, time_period):
 def SUM(price, time_period):
     return price.rolling(time_period).sum()
 
+
+######################################################################################
 
 # Simple Moving Average (SMA) 简单移动平均线
 # SMA: 10-period sum / 10
@@ -100,17 +108,18 @@ def TEMA(price, time_period):
         EMA(EMA(price, time_period), time_period), time_period)
 
 
-# (p+2*p1+3*p2+2*p3+p4)/9
-def TRIMA(price, time_period):
-    return
+# Bollinger Bands (BBANDS) 布林带
+# Middle Band = 20-day simple moving average (SMA)
+# Upper Band = 20-day SMA + (20-day standard deviation of price x 2)
+# Lower Band = 20-day SMA - (20-day standard deviation of price x 2)
+def BBANDS(price, time_period=5, nb_dev_up=2, nb_dev_dn=2):
+    middle_band = SMA(price, time_period)
+    upper_band = SMA(price, time_period) + STD(price, time_period) * nb_dev_up
+    lower_band = SMA(price, time_period) - STD(price, time_period) * nb_dev_dn
+    return upper_band, middle_band, lower_band
 
 
-# def TR(data, time_period):
-#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
-def TRIX(price, time_period):
-    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
-    return (tr - REF(tr)) / REF(tr) * 100
-
+######################################################################################
 
 # Moving Average Convergence/Divergence Oscillator (MACD) 平滑异同移动平均线
 # MACD: (12-day EMA - 26-day EMA)
@@ -121,17 +130,6 @@ def MACD(price, fast_period=12, slow_period=26, signal_period=9):
     macd_signal = EMA(macd, signal_period)
     macd_histogram = macd - macd_signal
     return macd, macd_signal, macd_histogram
-
-
-# Bollinger Bands (BBANDS) 布林带
-# Middle Band = 20-day simple moving average (SMA)
-# Upper Band = 20-day SMA + (20-day standard deviation of price x 2)
-# Lower Band = 20-day SMA - (20-day standard deviation of price x 2)
-def BBANDS(price, time_period=5, nb_dev_up=2, nb_dev_dn=2):
-    middle_band = SMA(price, time_period)
-    upper_band = SMA(price, time_period) + STD(price, time_period) * nb_dev_up
-    lower_band = SMA(price, time_period) - STD(price, time_period) * nb_dev_dn
-    return upper_band, middle_band, lower_band
 
 
 # Stochastic Oscillator (KD) 随机指标
@@ -166,83 +164,12 @@ def STOCH(high, low, close, fastk_period=5, slowk_period=3, slowd_period=3):
     return slow_k, slow_d
 
 
-# Relative Strength Index (RSI) 相对强弱指数（0~100）
-#               100
-# RSI = 100 - --------
-#              1 + RS
-# RS = Average Gain / Average Loss
-# First Average Gain = Sum of Gains over the past 14 periods / 14.
-# First Average Loss = Sum of Losses over the past 14 periods / 14
-# Average Gain = [(previous Average Gain) x 13 + current Gain] / 14.
-# Average Loss = [(previous Average Loss) x 13 + current Loss] / 14.
-def RSI(price, time_period=14):
-    diff = DIFF(price)
-    avg_gain = SMMA(diff.clip_lower(0), time_period)
-    avg_loss = SMMA(diff.clip_upper(0), time_period)
-    rsi = 100 - 100 / (1 - avg_gain / avg_loss)
-    return rsi
-
-
-# ROC - Rate of change 变动率指标
-# ROC = [(Close - Close n periods ago) / (Close n periods ago)] * 100
-def ROC(price, time_period=1):
-    return PCT_CHANGE(price, time_period) * 100
-
-
-# Typical Price = (High + Low + Close)/3
-# Raw Money Flow = Typical Price x Volume
-# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
-# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
-def MFI(high, low, close, volume, time_period):
-    tp = TP(high, low, close)
-    raw_money_flow = tp * volume
-    pos_money_flow = raw_money_flow.where(tp > REF(tp), 0)
-    neg_money_flow = raw_money_flow.where(tp < REF(tp), 0)
-    money_flow_ratio = SUM(pos_money_flow, time_period) / SUM(neg_money_flow, time_period)
-    return 100 - 100 / (1 + money_flow_ratio)
-
-
-# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
-# Lowest Low = lowest low for the look-back period
-# Highest High = highest high for the look-back period
-# %R is multiplied by -100 correct the inversion and move the decimal.
-def WILLR(high, low, close, time_period):
-    hh, ll = HH(high, time_period), LL(low, time_period)
-    return (hh - close) / (hh - ll) * (-100)
-
-
-# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
-# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
-def AROON(high, low, time_period):
-    aroon_up = MAXINDEX(high, time_period + 1) * 100 / time_period
-    aroon_down = MININDEX(low, time_period + 1) * 100 / time_period
-    return aroon_up, aroon_down
-
-
-# Aroon Oscillator = Aroon-Up  -  Aroon-Down
-def AROONOSC(high, low, time_period):
-    aroon_up, aroon_down = AROON(high, low, time_period)
-    return aroon_up - aroon_down
-
-
-# Ease of Movement (EMV) 简易波动指标 talib没有
-# Distance Moved = ((H + L)/2 - (Prior H + Prior L)/2)
-# Box Ratio = ((V/100,000,000)/(H - L))
-# 1-Period EMV = ((H + L)/2 - (Prior H + Prior L)/2) / ((V/100,000,000)/(H - L))
-# 14-Period Ease of Movement = 14-Period simple moving average of 1-period EMV
-def EMV(high, low, volume, time_period=14):
-    distance_moved = MEDIAN(high, low) - MEDIAN(REF(high), REF(low))
-    box_ratio = (volume / 100000000) / (high - low)
-    emv = distance_moved / box_ratio
-    return SMA(emv, time_period)
-
-
 # TR : MAX(MAX((HIGH-LOW),ABS(REF(CLOSE,1)-HIGH)),ABS(REF(CLOSE,1)-LOW))
 def TR(high, low, close):
     df = pd.DataFrame()
-    df['hl'] = (high - low).abs()
-    df['hcl'] = (REF(close) - high).abs()
-    df['cll'] = (REF(close) - low).abs()
+    df['hl'] = ABS(high - low)
+    df['hcl'] = ABS(REF(close) - high)
+    df['cll'] = ABS(REF(close) - low)
     return df.max(axis=1)
 
 
@@ -283,7 +210,7 @@ def DI(high, low, close, time_period):
 # DX = ABS(MDI-PDI)/(MDI+PDI)*100
 def DX(high, low, close, time_period):
     pdi, mdi = DI(high, low, close, time_period)
-    return (pdi - mdi).abs() / (pdi + mdi) * 100.0  # DX
+    return ABS(pdi - mdi) / (pdi + mdi) * 100.0  # DX
 
 
 # ADX = SMMA(DX,N)
@@ -296,6 +223,121 @@ def ADX(high, low, close, time_period):
 def ADXR(high, low, close, time_period):
     adx = ADX(high, low, close, time_period)
     return (adx + REF(adx, time_period)) / 2
+
+
+# ROC - Rate of change 变动率指标
+# ROC = [(Close - Close n periods ago) / (Close n periods ago)] * 100
+def ROC(price, time_period=1):
+    return PCT_CHANGE(price, time_period) * 100
+
+
+# ROCP:Rate of change Percentage: (price-prevPrice)/prevPricee
+def ROCP(price, time_period=1):
+    return (price - REF(price, time_period)) / REF(price, time_period)
+
+
+# ROCR:Rate of change ratio: (price/prevPrice)
+def ROCR(price, time_period=1):
+    return price / REF(price, time_period)
+
+
+# ROCR100:Rate of change ratio 100 scale: (price/prevPrice)*100
+def ROCR100(price, time_period=1):
+    return ROCR(price, time_period) * 100
+
+
+# Aroon-Up = ((25 - Days Since 25-day High)/25) x 100
+# Aroon-Down = ((25 - Days Since 25-day Low)/25) x 100
+def AROON(high, low, time_period):
+    aroon_up = MAXINDEX(high, time_period + 1) * 100 / time_period
+    aroon_down = MININDEX(low, time_period + 1) * 100 / time_period
+    return aroon_up, aroon_down
+
+
+# Aroon Oscillator = Aroon-Up  -  Aroon-Down
+def AROONOSC(high, low, time_period):
+    aroon_up, aroon_down = AROON(high, low, time_period)
+    return aroon_up - aroon_down
+
+
+# Relative Strength Index (RSI) 相对强弱指数（0~100）
+#               100
+# RSI = 100 - --------
+#              1 + RS
+# RS = Average Gain / Average Loss
+# First Average Gain = Sum of Gains over the past 14 periods / 14.
+# First Average Loss = Sum of Losses over the past 14 periods / 14
+# Average Gain = [(previous Average Gain) x 13 + current Gain] / 14.
+# Average Loss = [(previous Average Loss) x 13 + current Loss] / 14.
+def RSI(price, time_period=14):
+    diff = DIFF(price)
+    avg_gain = SMMA(diff.clip_lower(0), time_period)
+    avg_loss = SMMA(diff.clip_upper(0), time_period)
+    rsi = 100 - 100 / (1 - avg_gain / avg_loss)
+    return rsi
+
+
+# def TR(data, time_period):
+#     return EMA(EMA(EMA(data, time_period), time_period), time_period)
+def TRIX(price, time_period):
+    tr = EMA(EMA(EMA(price, time_period), time_period), time_period)
+    return (tr - REF(tr)) / REF(tr) * 100
+
+
+# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
+# Lowest Low = lowest low for the look-back period
+# Highest High = highest high for the look-back period
+# %R is multiplied by -100 correct the inversion and move the decimal.
+def WILLR(high, low, close, time_period):
+    hh, ll = HH(high, time_period), LL(low, time_period)
+    return (hh - close) / (hh - ll) * (-100)
+
+
+# Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
+# CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
+# Typical Price (TP) = (High + Low + Close)/3
+# Constant = .015
+def CCI(high, low, close, time_period=20):
+    tp = TP(high, low, close)
+    tp_sma = SMA(tp, time_period)
+    tp_std = STD(tp, time_period)
+    return (tp - tp_sma) / (.015 * tp_std)
+
+
+# Typical Price = (High + Low + Close)/3
+# Raw Money Flow = Typical Price x Volume
+# Money Flow Ratio = (14-period Positive Money Flow)/(14-period Negative Money Flow)
+# Money Flow Index = 100 - 100/(1 + Money Flow Ratio)
+def MFI(high, low, close, volume, time_period):
+    tp = TP(high, low, close)
+    raw_money_flow = tp * volume
+    pos_money_flow = raw_money_flow.where(tp > REF(tp), 0)
+    neg_money_flow = raw_money_flow.where(tp < REF(tp), 0)
+    money_flow_ratio = SUM(pos_money_flow, time_period) / SUM(neg_money_flow, time_period)
+    return 100 - 100 / (1 + money_flow_ratio)
+
+
+# Percentage Price Oscillator (PPO) 价格震荡百分比指数 和talib有出入
+# Percentage Price Oscillator (PPO): {(12-day EMA - 26-day EMA)/26-day EMA} x 100
+# Signal Line: 9-day EMA of PPO
+# PPO Histogram: PPO - Signal Line
+def PPO(price, fast_period=12, slow_period=26, signal_period=9):
+    ppo = (EMA(price, fast_period) - EMA(price, slow_period)) * 100.0 / EMA(price, slow_period)
+    ppo_signal = EMA(ppo, signal_period)
+    ppo_histogram = ppo - ppo_signal
+    return ppo, ppo_signal, ppo_histogram
+
+
+# Ease of Movement (EMV) 简易波动指标 talib没有
+# Distance Moved = ((H + L)/2 - (Prior H + Prior L)/2)
+# Box Ratio = ((V/100,000,000)/(H - L))
+# 1-Period EMV = ((H + L)/2 - (Prior H + Prior L)/2) / ((V/100,000,000)/(H - L))
+# 14-Period Ease of Movement = 14-Period simple moving average of 1-period EMV
+def EMV(high, low, volume, time_period=14):
+    distance_moved = MEDIAN(high, low) - MEDIAN(REF(high), REF(low))
+    box_ratio = (volume / 100000000) / (high - low)
+    emv = distance_moved / box_ratio
+    return SMA(emv, time_period)
 
 
 ###########################################################################
@@ -313,26 +355,9 @@ def OBV(price, volume):
     return pnv.cumsum()
 
 
-# Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
-# CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
-# Typical Price (TP) = (High + Low + Close)/3
-# Constant = .015
-def CCI(high, low, close, time_period=20):
-    tp = TP(high, low, close)
-    tp_sma = SMA(tp, time_period)
-    tp_std = STD(tp, time_period)
-    return (tp - tp_sma) / (.015 * tp_std)
-
-
-# Percentage Price Oscillator (PPO) 价格震荡百分比指数 和talib有出入
-# Percentage Price Oscillator (PPO): {(12-day EMA - 26-day EMA)/26-day EMA} x 100
-# Signal Line: 9-day EMA of PPO
-# PPO Histogram: PPO - Signal Line
-def PPO(price, fast_period=12, slow_period=26, signal_period=9):
-    ppo = (EMA(price, fast_period) - EMA(price, slow_period)) * 100.0 / EMA(price, slow_period)
-    ppo_signal = EMA(ppo, signal_period)
-    ppo_histogram = ppo - ppo_signal
-    return ppo, ppo_signal, ppo_histogram
+# (p+2*p1+3*p2+2*p3+p4)/9
+def TRIMA(price, time_period):
+    return
 
 
 # StochRSI = (RSI - Lowest Low RSI) / (Highest High RSI - Lowest Low RSI)
@@ -345,3 +370,10 @@ def STOCHRSI(data, time_period=14):
 
 def CROSS(close, fast, slow):
     return
+
+
+def AR(high, low, open, time_period):
+    open_sum = SUM(open.time_period)
+    high_sum = SUM(high.time_period)
+    low_sum = SUM(low.time_period)
+    return (high_sum - open_sum) / (open_sum - low_sum)

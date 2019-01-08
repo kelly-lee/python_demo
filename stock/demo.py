@@ -6,15 +6,13 @@ import talib
 
 
 # SMA: 10-period sum / 10
-# 前n天收盘价/时间周期
 def SMA(data, ndays):
     return data.rolling(ndays).mean()
 
 
 # Initial SMA: 10-period sum / 10
 # Multiplier: (2 / (Time periods + 1) ) = (2 / (10 + 1) ) = 0.1818 (18.18%)
-# EMA: {Close - EMA(previous day)} x multiplier + EMA(previous day).
-# 初始值
+# EMA: {Close - EMA(previous day)} x multiplier + EMA(previous day)
 def EMA(data, ndays):
     return data.ewm(ndays).mean()
 

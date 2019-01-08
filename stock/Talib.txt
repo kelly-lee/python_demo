@@ -1,0 +1,13 @@
+Volume Indicators
+AD                   Chaikin A/D Line
+ADOSC                Chaikin A/D Oscillator
+OBV                  On Balance Volume
+Volatility Indicators
+ATR                  Average True Range
+NATR                 Normalized Average True Range
+TRANGE               True Range
+Price Transform
+AVGPRICE             Average Price
+MEDPRICE             Median Price
+TYPPRICE             Typical Price
+WCLPRICE             Weighted Close Price

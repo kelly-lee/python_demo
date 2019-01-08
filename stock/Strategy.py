@@ -122,15 +122,14 @@ ax2 = plt.twinx()
 
 ax = fig.add_subplot(size, 1, 2)
 # drawDMI(ax, prices=[high, low, close], periods=[14, 6])
-# drawRSI(ax, close, periods=[6, 12, 24])
+drawRSI(ax, close, periods=[6, 12, 24])
 # ax.plot(ind.CCI(high, low, close, time_period=20))
 # drawMACD(ax, close, periods=[12, 26, 9])
 # drawKDJ(ax, prices=[high, low, close], periods=[9, 3, 3])
 # ax2.plot(ind.SMA(ind.ROC(volume), 14))
 # ax2.plot(ind.ROC(volume, 30))
 
-# slow_k, slow_d = talib.STOCH(high
-# , low, close, fastk_period=9, slowk_period=3, slowd_period=3)
+# slow_k, slow_d = talib.STOCH(high, low, close, fastk_period=9, slowk_period=3, slowd_period=3)
 # ax.plot(s_k)
 # ax.plot(s_d)
 # ax.plot(slow_k)

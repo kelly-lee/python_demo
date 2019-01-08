@@ -1,0 +1,47 @@
+****************MACD*****************
+MACD                 Moving Average Convergence/Divergence
+MACDEXT*              MACD with controllable MA type
+MACDFIX              Moving Average Convergence/Divergence Fix 12/26
+********************KDJ*****************   超买超卖类指标 0~100 暴涨暴跌会钝化
+STOCH                Stochastic
+STOCHF               Stochastic Fast
+****************DMI*****************
+MINUS_DI             Minus Directional Indicator
+MINUS_DM             Minus Directional Movement
+PLUS_DI              Plus Directional Indicator
+PLUS_DM              Plus Directional Movement
+DX                   Directional Movement Index
+ADX                  Average Directional Movement Index
+ADXR                 Average Directional Movement Index Rating
+****************ROC*****************
+ROC                  Rate of change : ((price/prevPrice)-1)*100
+ROCP                 Rate of change Percentage: (price-prevPrice)/prevPrice
+ROCR                 Rate of change ratio: (price/prevPrice)
+ROCR100              Rate of change ratio 100 scale: (price/prevPrice)*100
+****************AROON*****************
+AROON                Aroon
+AROONOSC             Aroon Oscillator
+****************OTHER*****************
+RSI                  Relative Strength Index
+TRIX                 1-day Rate-Of-Change (ROC) of a Triple Smooth EMA    中长线指标 TRIX与TRMA金叉，死叉
+WILLR                Williams' %R              超买超卖类指标 0~100 暴涨暴跌会钝化
+CCI                  Commodity Channel Index   算法有出入  股价偏离度,超买超卖类指标,暴涨暴跌不会钝化,股价是否超出常态分布范围 >100 超买 <-100 超卖，逢低吸纳 -100～100 常态，观望
+MFI                  Money Flow Index
+PPO                  Percentage Price Oscillator
+
+-------------------------------------------------------------
+APO                  Absolute Price Oscillator
+BOP                  Balance Of Power
+CMO                  Chande Momentum Oscillator
+MOM                  Momentum
+STOCHRSI             Stochastic Relative Strength Index
+ULTOSC               Ultimate Oscillator
+
+
+EMV
+MSTD
+MVAR
+RSV
+CR
+DMA
+VR
