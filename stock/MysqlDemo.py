@@ -47,19 +47,19 @@ engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
 # engine.execute('CREATE INDEX ix_stock_basics_code ON stock_basics (date(20))')
 # stock_basics.to_sql('stock_basics', engine, if_exists='append')
 
-# report_data = ts.get_report_data(1999, 4)
-# report_data['year'] = 1999
-# report_data['season'] = 4
-# report_data.to_sql('report_data', engine, if_exists='append')
-# print report_data
+report_data = ts.get_report_data(2018, 3)
+report_data['year'] = 2018
+report_data['season'] = 3
+report_data.to_sql('report_data', engine, if_exists='append')
+print report_data
 
-for year in range(2000, 2019):
-    for season in [1, 2, 3, 4]:
-        report_data = ts.get_report_data(year, season)
-        report_data['year'] = year
-        report_data['season'] = season
-        try:
-            report_data.to_sql('report_data', engine, if_exists='append')
-        except IOError, e:
-            print "Mysql Error %d: %s" % (e.args[0], e.args[1])
+# for year in range(2000, 2019):
+#     for season in [1, 2, 3, 4]:
+#         report_data = ts.get_report_data(year, season)
+#         report_data['year'] = year
+#         report_data['season'] = season
+#         try:
+#             report_data.to_sql('report_data', engine, if_exists='append')
+#         except IOError, e:
+#             print "Mysql Error %d: %s" % (e.args[0], e.args[1])
 

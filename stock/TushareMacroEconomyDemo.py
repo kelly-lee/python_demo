@@ -1,19 +1,23 @@
 # -*- coding: utf-8 -*-
+import MySQLdb as mysql
 from sqlalchemy import create_engine
 import tushare as ts
 import matplotlib.pyplot as plt
 import pandas as pd
 
+
+print mysql.__version__
+
 # 指定默认字体
-plt.rcParams['font.sans-serif'] = ['SimHei']
+# plt.rcParams['font.sans-serif'] = ['SimHei']
 # plt.rcParams['font.family'] = 'sans-serif'
 # 解决负号'-'显示为方块的问题
-plt.rcParams['axes.unicode_minus'] = False
+# plt.rcParams['axes.unicode_minus'] = False
 
 engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-# 存款利率
-deposit_rate = ts.get_deposit_rate()
-deposit_rate.to_sql('deposit_rate', engine, if_exists='append')
+# # 存款利率
+# deposit_rate = ts.get_deposit_rate()
+# deposit_rate.to_sql('deposit_rate', engine, if_exists='append')
 # # 贷款利率
 # loan_rate = ts.get_loan_rate()
 # loan_rate.to_sql('loan_rate', engine, if_exists='append')
