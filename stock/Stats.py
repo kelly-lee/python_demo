@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import talib
 import numpy as np
 
-stocks = ['GOOG', 'AMZN', 'BABA', 'AAPL', '300059.sz']
+stocks = ['300040.sz', '300241.sz', '300134.sz', '300111.sz', '300059.sz']
 # mdi 22~42   29~33  35~38
 fig = plt.figure(figsize=(12, 6))
 ax = fig.add_subplot(1, 1, 1)
