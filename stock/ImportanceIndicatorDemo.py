@@ -95,6 +95,8 @@ data['obv'] = ind.OBV(close, volume)
 data['vol_roc'] = ind.ROC(volume)
 data['roc'] = ind.ROC(close, 5)
 
+
+
 # print data
 # X = [high, low, close, open, ind.SMA(close, 5), ind.SMA(close, 10), ind.SMA(close, 20)]
 # print X
