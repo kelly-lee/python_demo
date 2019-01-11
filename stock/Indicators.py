@@ -131,6 +131,13 @@ def MACD(price, fast_period=12, slow_period=26, signal_period=9):
     macd_histogram = macd - macd_signal
     return macd, macd_signal, macd_histogram
 
+# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
+# Lowest Low = lowest low for the look-back period
+# Highest High = highest high for the look-back period
+# %R is multiplied by -100 correct the inversion and move the decimal.
+def WILLR(high, low, close, time_period):
+    hh, ll = HH(high, time_period), LL(low, time_period)
+    return (hh - close) / (hh - ll) * (-100)
 
 # Stochastic Oscillator (KD) 随机指标
 # %K = (Current Close - Lowest Low)/(Highest High - Lowest Low) * 100
@@ -284,13 +291,7 @@ def TRIX(price, time_period):
     return (tr - REF(tr)) / REF(tr) * 100
 
 
-# %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
-# Lowest Low = lowest low for the look-back period
-# Highest High = highest high for the look-back period
-# %R is multiplied by -100 correct the inversion and move the decimal.
-def WILLR(high, low, close, time_period):
-    hh, ll = HH(high, time_period), LL(low, time_period)
-    return (hh - close) / (hh - ll) * (-100)
+
 
 
 # Commodity Channel Index (CCI) 顺势指标   算法与talib有出入

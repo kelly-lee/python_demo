@@ -9,53 +9,6 @@ import talib
 import numpy as np
 
 
-def drawRSI(ax, price, periods=[6, 12, 24], hlines=[20, 50, 80]):
-    for period in periods:
-        rsi = ind.RSI(price, time_period=period)
-        ax.plot(rsi, label='rsi%d' % period)
-    drawHline(hlines)
-    # ax.fill_between(time, 80, rsi, where=rsi >= 80, facecolor='green')
-    # ax.fill_between(time, 20, rsi, where=rsi <= 20, facecolor='red')
-
-
-def drawMACD(ax, price, periods=[12, 16, 9]):
-    macd, macd_signal, macd_histogram = ind.MACD(price, fast_period=periods[0], slow_period=periods[1],
-                                                 signal_period=periods[2])
-    ax.plot(macd, label='macd')
-    ax.plot(macd_signal, label='macd_singal')
-    ax.bar(price.index, macd_histogram.clip_lower(0), facecolor='r')
-    ax.bar(price.index, macd_histogram.clip_upper(0), facecolor='g')
-
-
-def drawDMI(ax, prices, periods=[14, 6]):
-    high, low, close = prices[0], prices[1], prices[2]
-    pdi, mdi = ind.DI(high, low, close, time_period=periods[0])
-    adx = ind.ADX(high, low, close, time_period=periods[1])
-    adxr = ind.ADXR(high, low, close, time_period=periods[1])
-    ax.plot(pdi, label='pdi')
-    ax.plot(mdi, label='mdi')
-    ax.plot(adx, label='dx')
-    ax.plot(adxr, label='adxr')
-    ax.bar(pdi.index, (pdi - mdi).clip_lower(0), facecolor='r')
-    ax.bar(pdi.index, (pdi - mdi).clip_upper(0), facecolor='g')
-    drawHline([20, 40])
-
-
-def drawKDJ(ax, prices, periods=[9, 3, 3], hlines=[20, 50, 80]):
-    slow_k, slow_d = ind.STOCH(prices[0], prices[1], prices[2], fastk_period=periods[0], slowk_period=periods[1],
-                               slowd_period=periods[2])
-    ax.plot(slow_d, label='d')
-    ax.plot(slow_k, label='k')
-    drawHline(hlines)
-    # ax.fill_between(time, 80, rsi, where=rsi >= 80, facecolor='green')
-    # ax.fill_between(time, 20, rsi, where=rsi <= 20, facecolor='red')
-
-
-def drawHline(y_arr):
-    for y in y_arr:
-        ax.axhline(y=y, color='grey', linestyle="--", linewidth=1)
-
-
 def golden_cross(fast, slow):
     return (fast.shift(1) < slow.shift(1)) & (fast > slow)
 

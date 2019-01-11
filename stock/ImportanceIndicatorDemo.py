@@ -53,7 +53,7 @@ high, low, close, open, volume = data['High'], data['Low'], data['Close'], data[
 #     data['tema_%d' % period] = ind.TEMA(close, period)
 
 
-# BB
+# bb
 upper_band, middle_band, lower_band = ind.BBANDS(close, 5, 2, 2)
 data['upper_band'] = upper_band
 data['middle_band'] = middle_band
@@ -61,8 +61,8 @@ data['lower_band'] = lower_band
 # macd
 macd, macdsignal, macdhist = ind.MACD(close, 12, 26, 9)
 data['macd'] = macd
-data['macdsignal'] = macdsignal
-data['macdhist'] = macdhist
+data['macd_signal'] = macdsignal
+data['macd_hist'] = macdhist
 # kdj
 slow_k, slow_d = ind.STOCH(high, low, close, fastk_period=9, slowk_period=3, slowd_period=3)
 data['slow_k'] = slow_k
@@ -81,14 +81,16 @@ data['pdi'] = pdi
 data['mdi'] = mdi
 data['dx'] = ind.DX(high, low, close, time_period=6)
 data['adxr'] = ind.ADXR(high, low, close, time_period=6)
+# aroon
 aroon_up, aroon_down = ind.AROON(high, low, time_period=14)
 data['aroon_up'] = aroon_up
 data['aroon_down'] = aroon_down
 data['aroonosc'] = ind.AROONOSC(high, low, time_period=14)
+
 data['emv'] = ind.EMV(high, low, volume, time_period=14)
 data['trix'] = ind.TRIX(close, time_period=14)
-data['cci_14'] = ind.CCI(high, low, close, 14)
-data['rsi_14'] = ind.RSI(close, 14)
+data['cci'] = ind.CCI(high, low, close, 14)
+data['rsi'] = ind.RSI(close, 14)
 data['mfi'] = ind.MFI(high, low, close, volume, time_period=14)
 data['willr'] = ind.WILLR(high, low, close, time_period=14)
 data['obv'] = ind.OBV(close, volume)
