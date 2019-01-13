@@ -1,0 +1,78 @@
+# -*- coding: utf-8 -*-
+import tushare as ts
+import pandas as pd
+from sqlalchemy import create_engine
+import numpy as np
+import Indicators as ind
+
+
+# 保存复权因子
+def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    stock_basics = pro.stock_basic(fields='ts_code,symbol,name')
+    for index, row in stock_basics.iterrows():
+        ts_code = row['ts_code']
+        symbol = row['symbol']
+        if symbol > end_symbol:
+            continue
+        if symbol < start_symbol:
+            continue
+        df = pro.adj_factor(ts_code=ts_code, trade_date=trade_date)
+        adj_factor = df.groupby('adj_factor').min()
+        adj_factor.to_sql('adj_factor', engine, if_exists='append')
+        print 'adj', ts_code
+
+
+# 保存日线
+def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    stock_basics = pro.stock_basic(fields='ts_code,symbol,name')
+    i = 0
+    error_code = []
+    for index, row in stock_basics.iterrows():
+        ts_code = row['ts_code']
+        name = row['name']
+        symbol = row['symbol']
+        i += 1
+        if symbol > end_symbol:
+            continue
+        if symbol < start_symbol:
+            continue
+        try:
+            h_data = pro.daily(ts_code=ts_code, trade_date=trade_date)
+            h_data.to_sql('daily_data', engine, if_exists='append')
+            print i, ts_code, name, 'loaded'
+        except:
+            error_code.append(ts_code)
+            print i, ts_code, name, 'load error'
+    print 'error code list : ', error_code
+
+
+def get_daily_data(type='300', size=0, start_date='', end_date=''):
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    df = pd.read_sql('daily_data_%s' % type, engine)
+    df.drop(['id', 'index'], axis=1, inplace=True)
+    print 'load data'
+    inds = pd.DataFrame()
+    i = 0
+    for ts_code in df['ts_code'].drop_duplicates():
+        i = i + 1
+        if (size != 0) & (i > size):
+            break
+        stock = df[(df.ts_code == ts_code) & (df.trade_date >= start_date) & (df.trade_date <= end_date)]
+        stock = stock.sort_values(by=['trade_date'], ascending=True)
+        high, low, open, close, volume = stock['high'], stock['low'], stock['open'], stock['close'], stock['vol']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        stock.join(ochl2ind, how='left').to_sql('daily_ind_%s' % type, engine, if_exists='append')
+        # 计算指标
+        inds = inds.append(ochl2ind)
+        print 'ind', ts_code
+    df = df.join(inds, how='left').dropna()
+    return df
+
+# df = get_daily_data(start_date='20180101', end_date='20190131')
+# print df

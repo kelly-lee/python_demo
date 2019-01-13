@@ -6,6 +6,25 @@ import talib
 import numpy as np
 
 
+# class Indicator:
+#     def __init__(self, data):
+#         self.data = data
+#         self.close = data['Close']
+#
+#     def DIFF(self, price=None, time_period=1):
+#         if price is None:
+#             return self.close.diff(time_period)
+#         else:
+#             return self.data[price].diff(time_period)
+#
+#
+# data = web.DataReader('GOOG', data_source='yahoo', start='1/1/2017', end='1/30/2019')
+# data = pd.DataFrame(data)
+#
+# ind = Indicator(data)
+# print DIFF()
+
+
 def DIFF(price, time_period=1):
     return price.diff(time_period)
 
@@ -131,6 +150,7 @@ def MACD(price, fast_period=12, slow_period=26, signal_period=9):
     macd_histogram = macd - macd_signal
     return macd, macd_signal, macd_histogram
 
+
 # %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
 # Lowest Low = lowest low for the look-back period
 # Highest High = highest high for the look-back period
@@ -138,6 +158,7 @@ def MACD(price, fast_period=12, slow_period=26, signal_period=9):
 def WILLR(high, low, close, time_period):
     hh, ll = HH(high, time_period), LL(low, time_period)
     return (hh - close) / (hh - ll) * (-100)
+
 
 # Stochastic Oscillator (KD) 随机指标
 # %K = (Current Close - Lowest Low)/(Highest High - Lowest Low) * 100
@@ -291,9 +312,6 @@ def TRIX(price, time_period):
     return (tr - REF(tr)) / REF(tr) * 100
 
 
-
-
-
 # Commodity Channel Index (CCI) 顺势指标   算法与talib有出入
 # CCI = (Typical Price  -  Time period SMA of TP) / (.015 x  Time period Mean Deviation of TP)
 # Typical Price (TP) = (High + Low + Close)/3
@@ -378,3 +396,66 @@ def AR(high, low, open, time_period):
     high_sum = SUM(high.time_period)
     low_sum = SUM(low.time_period)
     return (high_sum - open_sum) / (open_sum - low_sum)
+
+
+def ochl2ind(open, close, high, low, volume):
+    data = pd.DataFrame()
+
+    # for period in [5, 10, 20, 30, 60, 120]:
+    #     data['sma_%d' % period] = SMA(close, period)
+    #     data['ema_%d' % period] = EMA(close, period)
+    #     data['wma_%d' % period] = WMA(close, period)
+    #     data['dema_%d' % period] = DEMA(close, period)
+    #     data['smma_%d' % period] = SMMA(close, period)
+    #     data['tema_%d' % period] = TEMA(close, period)
+
+    # bb
+    upper_band, middle_band, lower_band = BBANDS(close, 5, 2, 2)
+    data['upper_band'] = upper_band
+    data['middle_band'] = middle_band
+    data['lower_band'] = lower_band
+    # macd
+    macd, macdsignal, macdhist = MACD(close, 12, 26, 9)
+    data['macd'] = macd
+    data['macd_signal'] = macdsignal
+    data['macd_hist'] = macdhist
+    # kdj
+    slow_k, slow_d = STOCH(high, low, close, 9, 3, 3)
+    data['slow_k'] = slow_k
+    data['slow_d'] = slow_d
+    data['slow_j'] = 3 * slow_k - 2 * slow_d
+    fast_k, fast_d = STOCHF(high, low, close, 9, 3)
+    data['fast_k'] = fast_k
+    data['fast_d'] = fast_d
+
+    # dmi
+    data['tr'] = TR(high, low, close)
+    data['atr'] = ATR(high, low, close, 14)
+    # pdm, mdm = DM(high, low, 14)
+    # data['pdm'] = pdm
+    # data['mdm'] = mdm
+    pdi, mdi = DI(high, low, close, 14)
+    data['pdi'] = pdi
+    data['mdi'] = mdi
+    data['dx'] = DX(high, low, close, 6)
+    data['adxr'] = ADXR(high, low, close, 6)
+    # aroon
+    aroon_up, aroon_down = AROON(high, low, 14)
+    data['aroon_up'] = aroon_up
+    data['aroon_down'] = aroon_down
+    data['aroonosc'] = AROONOSC(high, low, 14)
+
+    data['emv'] = EMV(high, low, volume, 14)
+    data['trix'] = TRIX(close, 14)
+    data['cci'] = CCI(high, low, close, 14)
+    data['rsi'] = RSI(close, 14)
+    data['mfi'] = MFI(high, low, close, volume, 14)
+    data['willr'] = WILLR(high, low, close, 14)
+    data['obv'] = OBV(close, volume)
+    data['vol_roc'] = ROC(volume)
+    data['roc'] = ROC(close, 6)
+    # min,max
+    data['min'] = MIN(close, 10)
+    data['max'] = MAX(close, 5)
+    data['c_min'] = close - MIN(close, 10)
+    return data
