@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
 import Indicators as ind
-
+import MySQLdb as db
 
 # 保存复权因子
 def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
@@ -51,6 +51,34 @@ def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
             print i, ts_code, name, 'load error'
     print 'error code list : ', error_code
 
+def get_daily_data(ts_code='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    if (len(ts_code) > 0) & (not ts_code.isspace()):
+        table_suffixs = [ts_code[0:3]]
+    else:
+        table_suffixs = ['000', '002', '300', '600']
+    df = pd.DataFrame()
+    for table_suffix in table_suffixs:
+        sql = "SELECT ts_code,trade_date,open,close,high,low,vol FROM daily_data_%s where 1=1 " % table_suffix
+        if (len(ts_code) > 0) & (not ts_code.isspace()):
+            sql += "and ts_code = %(ts_code)s "
+        if (len(trade_date) > 0) & (not trade_date.isspace()):
+            sql += "and trade_date = %(trade_date)s "
+        if (len(start_date) > 0) & (not start_date.isspace()):
+            sql += "and trade_date >= %(start_date)s "
+        if (len(end_date) > 0) & (not end_date.isspace()):
+            sql += "and trade_date >= %(end_date)s "
+        sql += "order by trade_date asc "
+        print sql
+        data = pd.read_sql(sql, params={'ts_code': ts_code, 'trade_date': trade_date, 'start_date': start_date,
+                                        'end_date': end_date}, con=con)
+        if append_ind:
+            open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['vol']
+            ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+            data = data.join(ochl2ind, how='left')
+        df = df.append(data)
+    con.close()
+    return df
 
 def get_daily_data(type='300', size=0, start_date='', end_date=''):
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
@@ -73,6 +101,3 @@ def get_daily_data(type='300', size=0, start_date='', end_date=''):
         print 'ind', ts_code
     df = df.join(inds, how='left').dropna()
     return df
-
-# df = get_daily_data(start_date='20180101', end_date='20190131')
-# print df

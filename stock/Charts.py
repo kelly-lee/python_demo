@@ -12,7 +12,7 @@ import mpl_finance as mpf
 import talib
 import numpy as np
 import matplotlib.dates as mdates
-import statsmodels.tsa.stattools as ts
+#import statsmodels.tsa.stattools as ts
 
 import matplotlib as mpl
 import matplotlib.ticker as ticker
@@ -22,6 +22,13 @@ def drawK(ax, date_index, high, low, open, close):
     mpf.candlestick_ohlc(ax, zip(date_index, open, high, low, close),
                          colorup='grey', colordown='grey')
     drawDate(ax, date)
+
+# def drawK(ax, data):
+#     date, open, close, high, low = data.index, data['open'], data['close'], data['high'], data['low']
+#     date_index = np.arange(0, 0 + len(date))
+#     mpf.candlestick_ohlc(ax, zip(date_index, open, high, low, close),
+#                          colorup='red', colordown='green')
+#     drawDate(ax, date)
 
 
 def drawBBANDS(ax, price, period=20):
@@ -45,6 +52,7 @@ def drawEMA(ax, price, periods=[5, 10, 20, 30, 60, 120]):
 
 ################################################################################################
 def drawKDJ(ax, prices, periods=[9, 3, 3], hlines=[-14, -3, 6.5, 17, 95]):
+    date, open, close, high, low = data.index, data['open'], data['close'], data['high'], data['low']
     high, low, close = prices[0], prices[1], prices[2]
     slow_k, slow_d = ind.STOCH(high, low, close, fastk_period=periods[0], slowk_period=periods[1],
                                slowd_period=periods[2])
@@ -52,6 +60,7 @@ def drawKDJ(ax, prices, periods=[9, 3, 3], hlines=[-14, -3, 6.5, 17, 95]):
     # ax.plot(slow_k, label='k')
     ax.plot(3 * slow_k - 2 * slow_d, label='j')
     drawHline(ax, hlines)
+    drawDate(ax, date)
     # ax.fill_between(time, 80, rsi, where=rsi >= 80, facecolor='green')
     # ax.fill_between(time, 20, rsi, where=rsi <= 20, facecolor='red')
 
@@ -125,7 +134,7 @@ def drawDate(ax, date):
 
 
 data = web.DataReader('AAPL', data_source='yahoo', start='1/1/2018', end='1/30/2019')
-print ts.adfuller(data['Adj Close'])
+#print ts.adfuller(data['Adj Close'])
 data = pd.DataFrame(data)
 start = mdates.date2num(data.index.to_pydatetime())[0]
 date_index = np.arange(0, 0 + len(data.index))
@@ -138,10 +147,10 @@ fig = plt.figure(figsize=(16, 8))
 ind_size = 2
 
 ax = fig.add_subplot(ind_size, 1, 1)
-# drawSMA(ax, close)
+drawSMA(ax, close)
 # drawEMA(ax, close, periods=[5, 10, 20])
 
-# drawK(ax, date_index, high, low, open, close)
+drawK(ax, date_index, high, low, open, close)
 # drawSMA(ax, close)
 
 
