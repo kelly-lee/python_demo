@@ -437,7 +437,7 @@ def ochl2ind(open, close, high, low, volume):
     pdi, mdi = DI(high, low, close, 14)
     data['pdi'] = pdi
     data['mdi'] = mdi
-    data['dx'] = DX(high, low, close, 6)
+    data['adx'] = DX(high, low, close, 6)
     data['adxr'] = ADXR(high, low, close, 6)
     # aroon
     aroon_up, aroon_down = AROON(high, low, 14)

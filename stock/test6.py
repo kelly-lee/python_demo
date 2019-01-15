@@ -4,40 +4,24 @@ import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
 import matplotlib.pyplot as plt
-import MySQLdb as db
+import TushareStore as store
 import Indicators as ind
 import mpl_finance as mpf
 import pandas_datareader.data as web
 
 
-def getDailyDate(ts_code='', trade_date='', start_date='', end_date='', append_ind=False):
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    if (len(ts_code) > 0) & (not ts_code.isspace()):
-        table_suffixs = [ts_code[0:3]]
-    else:
-        table_suffixs = ['000', '002', '300', '600']
-    df = pd.DataFrame()
-    for table_suffix in table_suffixs:
-        sql = "SELECT ts_code,trade_date,open,close,high,low,vol as volume FROM daily_data_%s where 1=1 " % table_suffix
-        if (len(ts_code) > 0) & (not ts_code.isspace()):
-            sql += "and ts_code = %(ts_code)s "
-        if (len(trade_date) > 0) & (not trade_date.isspace()):
-            sql += "and trade_date = %(trade_date)s "
-        if (len(start_date) > 0) & (not start_date.isspace()):
-            sql += "and trade_date >= %(start_date)s "
-        if (len(end_date) > 0) & (not end_date.isspace()):
-            sql += "and trade_date >= %(end_date)s "
-        sql += "order by trade_date asc "
-        print sql
-        data = pd.read_sql(sql, params={'ts_code': ts_code, 'trade_date': trade_date, 'start_date': start_date,
-                                        'end_date': end_date}, con=con)
-        if append_ind:
-            open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
-            ochl2ind = ind.ochl2ind(open, close, high, low, volume)
-            data = data.join(ochl2ind, how='left')
-        df = df.append(data)
-    con.close()
-    return df
+def get_chart_data_from_web(code, start_date='', end_date='', append_ind=True):
+    data = web.DataReader(code, data_source='yahoo', start=start_date, end=end_date)
+    data.rename(columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume'},
+                inplace=True)
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    data['date'] = data.index
+    data['date'].apply(lambda date: date.date())
+    data.index = np.arange(0, 0 + len(data))
+    return data
 
 
 def drawHline(ax, hlines):
@@ -117,61 +101,152 @@ def drawKDJ(ax, data, periods=[9, 3, 3], hlines=[-14, -3, 6.5, 17, 95]):
 
 
 def drawWR(ax, data, periods=[6], hlines=[-98, -93, -88, -83.5, -25, -11]):
-    close, high, low = data['close'], data['high'], data['low']
     for period in periods:
-        wr = ind.WILLR(high, low, close, time_period=period)
-        ax.plot(wr, label='wr%d' % period)
+        if data.__contains__('willr'):
+            willr = data['willr']
+        else:
+            close, high, low = data['close'], data['high'], data['low']
+            willr = ind.WILLR(high, low, close, time_period=period)
+        ax.plot(willr, label='wr%d' % period)
     drawHline(ax, hlines)
 
 
-def drawDMI(ax, prices, periods=[14, 6], hlines=[10, 12, 16, 20, 22]):
-    high, low, close = prices[0], prices[1], prices[2]
-    pdi, mdi = ind.DI(high, low, close, time_period=periods[0])
-    adx = ind.ADX(high, low, close, time_period=periods[1])
-    adxr = ind.ADXR(high, low, close, time_period=periods[1])
+def drawDMI(ax, data, periods=[6, 6], hlines=[10, 12, 16, 20, 22]):
+    if data.__contains__('pdi') & data.__contains__('mdi') & data.__contains__('adx') & data.__contains__('adxr'):
+        pdi = data['pdi']
+        mdi = data['mdi']
+        adx = data['adx']
+        adxr = data['adxr']
+    else:
+        close, high, low = data['close'], data['high'], data['low']
+        pdi, mdi = ind.DI(high, low, close, time_period=periods[0])
+        adx = ind.ADX(high, low, close, time_period=periods[1])
+        adxr = ind.ADXR(high, low, close, time_period=periods[1])
     ax.plot(pdi, label='pdi%d' % periods[0])
     # ax.plot(mdi, label='mdi%d' % periods[0])
     # ax.plot(adx, label='adx%d' % periods[1])
     # ax.plot(adxr, label='adxr%d' % periods[1])
-    # ax.bar(pdi.index, (pdi - mdi).clip_lower(0), facecolor='r')
-    # ax.bar(pdi.index, (pdi - mdi).clip_upper(0), facecolor='g')
     drawHline(ax, hlines)
 
 
-def drawCCI(ax, prices, periods=[14], hlines=[-231, -138, -110, -83, 50]):
-    high, low, close = prices[0], prices[1], prices[2]
+def drawCCI(ax, data, periods=[14], hlines=[-231, -138, -110, -83, 50]):
     for period in periods:
-        cci = ind.CCI(high, low, close, time_period=period)
+        if data.__contains__('cci'):
+            cci = data['cci']
+        else:
+            close, high, low = data['close'], data['high'], data['low']
+            cci = ind.CCI(high, low, close, time_period=period)
         ax.plot(cci, label='cci%d' % period)
     drawHline(ax, hlines)
 
 
-# 连接mysql，获取连接的对象
-df = getDailyDate(ts_code='000001.SZ', start_date='20180101', append_ind=False)
-df.drop(['ts_code'], axis=1, inplace=True)
-df = df.dropna()
-df.rename(columns={'trade_date': 'date'}, inplace=True)
-df.index = np.arange(0, 0 + len(df))
-# df = web.DataReader('AAPL', data_source='yahoo', start='1/1/2018', end='1/30/2019')
-# df.rename(columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume'}, inplace=True)
-# df['date'] = df.index
-# df['date'].apply(lambda date: date.date())
-# df.index = np.arange(0, 0 + len(df))
-# print df
-# print df.info()
+################################################################################################
+
+def drawMin(ax, data):
+    close, high, low = data['close'], data['high'], data['low']
+    # pdi, mdi = ind.DI(high, low, close, time_period=6)
+    # ax.plot(pdi)
+    pdi2, mdi2 = ind.DI(high, low, close, time_period=14)
+    ax.plot(pdi2, c='orange')
+    drawHline(ax, [10, 12, 16, 20, 22])
+
+    # ax = plt.twinx()
+    # ax.plot(close, label='willr', c='grey')
+    # cross = close[(pdi2 < 12)]
+    # ax.scatter(cross.index, cross, c='red')
+
+    # pdi = data['pdi']
+
+    # ax.plot(pdi, label='pdi', c='orange')
+    # drawHline(ax, [10, 12])
+    willr = data['willr']
+    ax = plt.twinx()
+    ax.plot(willr, label='willr', c='green')
+    # drawHline(ax, [-98, -83.5])
+
+
+def drawInd(ind='', ax=None, data=None):
+    if ind == 'K':
+        drawK(ax, data)
+    if ind == 'SMA':
+        drawSMA(ax, data)
+    if ind == 'BBANDS':
+        drawBBANDS(ax, data)
+    if ind == 'WR':
+        drawWR(ax, data)
+    if ind == 'DMI':
+        drawDMI(ax, data)
+    if ind == 'KDJ':
+        drawKDJ(ax, data)
+    if ind == 'CCI':
+        drawCCI(ax, data)
+
+
+def drawAll(data, types=[['K', 'SMA']]):
+    row = len(types)
+    fig = plt.figure(figsize=(16, 4 * row))
+    i = 0
+    for type in types:
+        i += 1
+        ax = fig.add_subplot(row, 1, i)
+        j = 0
+        for ind in type:
+            j += 1
+            if j == 2:
+                ax = plt.twinx()
+            drawInd(ind, ax, data)
+            drawDate(ax, data)
+    plt.legend()
+    plt.subplots_adjust(hspace=0.1)
+    # plt.grid(True)
+    plt.show()
+
+
+def drawBuy(codes):
+    col = 2
+    matrix = np.reshape(codes, (-1, col))
+    row = len(matrix)
+    fig = plt.figure(figsize=(8 * col, 4 * row))
+    i = 0
+    for code in codes:
+        i += 1
+        data = store.get_chart_data_from_db("000%d.SZ" % code, '20180101')
+        # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
+        close, pdi, wr = data['close'], data['pdi'], data['willr']
+        ax = fig.add_subplot(row, col, i)
+        ax.plot(close, c='grey')
+        # buy = close[(wr <= -98)]
+        # ax.scatter(buy.index, buy, c='red')
+        # buy = close[(wr <= -93) & (wr > -98)]
+        # ax.scatter(buy.index, buy, c='orange')
+        # buy = close[(wr <= -88) & (wr > -93)]
+        # ax.scatter(buy.index, buy, c='yellow')
+        # buy = close[(wr <= -83) & (wr > -88)]
+        # ax.scatter(buy.index, buy, c='green')
+
+        buy = close[(pdi <= 10) & (wr < -88)]
+        ax.scatter(buy.index, buy, c='red')
+        buy = close[(pdi <= 12) & (pdi > 10) & (wr < -88)]
+        ax.scatter(buy.index, buy, c='orange')
+        buy = close[(pdi <= 16) & (pdi > 12) & (wr < -88)]
+        ax.scatter(buy.index, buy, c='yellow')
+        buy = close[(pdi <= 20) & (pdi > 16) & (wr < -88)]
+        ax.scatter(buy.index, buy, c='green')
+
+    plt.legend()
+    plt.subplots_adjust(hspace=0.1)
+    plt.show()
+
+
+# data = get_chart_data_from_web('AMZN', '1/1/2018', '1/30/2019')
+# data = store.get_chart_data_from_db('000001.SZ', '20180101')
+# types = [['K', 'SMA'], ['WR', 'DMI'], ['KDJ'], ['CCI']]
+# drawAll(data, types=types)
 ################################################
-fig = plt.figure(figsize=(16, 8))
-ind_size = 2
-ax = fig.add_subplot(ind_size, 1, 1)
-drawK(ax, df)
-# drawSMA(ax, df)
-drawEMA(ax, df)
-# drawBBANDS(ax, df)
-drawDate(ax, df)
-ax = fig.add_subplot(ind_size, 1, 2)
-drawKDJ(ax, df)
-drawDate(ax, df)
-plt.legend()
-plt.subplots_adjust(hspace=0.1)
-# plt.grid(True)
-plt.show()
+a = np.arange(0, 12)
+# 501 516 598 589 582 586 589
+print np.reshape(a, (-1, 4)).shape[0]
+codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
+codes = np.random.randint(600, 700, [10])
+print codes
+drawBuy(codes)
