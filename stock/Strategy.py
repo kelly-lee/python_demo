@@ -9,16 +9,6 @@ import talib
 import numpy as np
 
 
-def golden_cross(fast, slow):
-    return (fast.shift(1) < slow.shift(1)) & (fast > slow)
-
-
-def dead_cross(fast, slow):
-    return (fast.shift(1) > slow.shift(1)) & (fast < slow)
-
-
-def top(price):
-    return (price.shift(2) < price.shift(1)) & (price.shift(1) > price) & (price.shift(1) > 50)
 
 
 def pdi_buy(pdi, mdi, adx, close):

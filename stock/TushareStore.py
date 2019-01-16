@@ -6,6 +6,7 @@ import numpy as np
 import Indicators as ind
 import MySQLdb as db
 
+
 # 保存复权因子
 def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
@@ -112,6 +113,3 @@ def get_chart_data_from_db(code='', start_date='', end_date='', append_ind=True)
     data.rename(columns={'trade_date': 'date'}, inplace=True)
     data.index = np.arange(0, 0 + len(data))
     return data
-
-
-

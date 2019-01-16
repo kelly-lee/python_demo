@@ -1,116 +1,27 @@
 # -*- coding: utf-8 -*-
-
-from datetime import datetime
-
-from talib import abstract
+import tushare as ts
 import pandas as pd
-import stock.Indicators as ind
-
-import pandas_datareader.data as web
-import matplotlib.pyplot as plt
-import mpl_finance as mpf
-import talib
+from sqlalchemy import create_engine
 import numpy as np
-import matplotlib.dates as mdates
-#import statsmodels.tsa.stattools as ts
-
-import matplotlib as mpl
-import matplotlib.ticker as ticker
-
-
-def drawK(ax, date_index, high, low, open, close):
-    mpf.candlestick_ohlc(ax, zip(date_index, open, high, low, close),
-                         colorup='grey', colordown='grey')
-    drawDate(ax, date)
-
-# def drawK(ax, data):
-#     date, open, close, high, low = data.index, data['open'], data['close'], data['high'], data['low']
-#     date_index = np.arange(0, 0 + len(date))
-#     mpf.candlestick_ohlc(ax, zip(date_index, open, high, low, close),
-#                          colorup='red', colordown='green')
-#     drawDate(ax, date)
+import matplotlib.pyplot as plt
+import TushareStore as store
+import Indicators as ind
+import mpl_finance as mpf
+import pandas_datareader.data as web
 
 
-def drawBBANDS(ax, price, period=20):
-    upper_band, middle_band, lower_band = ind.BBANDS(price, time_period=period)
-    ax.plot(upper_band, label='upper_band')
-    ax.plot(middle_band, label='middle_band')
-    ax.plot(lower_band, label='lower_band')
-
-
-def drawSMA(ax, price, periods=[5, 10, 20, 30, 60, 120]):
-    for period in periods:
-        sma = ind.SMA(price, period)
-        ax.plot(sma, label='sma%d' % period, linewidth=1)
-
-
-def drawEMA(ax, price, periods=[5, 10, 20, 30, 60, 120]):
-    for period in periods:
-        ema = ind.EMA(price, period)
-        ax.plot(ema, label='ema%d' % period)
-
-
-################################################################################################
-def drawKDJ(ax, prices, periods=[9, 3, 3], hlines=[-14, -3, 6.5, 17, 95]):
-    date, open, close, high, low = data.index, data['open'], data['close'], data['high'], data['low']
-    high, low, close = prices[0], prices[1], prices[2]
-    slow_k, slow_d = ind.STOCH(high, low, close, fastk_period=periods[0], slowk_period=periods[1],
-                               slowd_period=periods[2])
-    # ax.plot(slow_d, label='d')
-    # ax.plot(slow_k, label='k')
-    ax.plot(3 * slow_k - 2 * slow_d, label='j')
-    drawHline(ax, hlines)
-    drawDate(ax, date)
-    # ax.fill_between(time, 80, rsi, where=rsi >= 80, facecolor='green')
-    # ax.fill_between(time, 20, rsi, where=rsi <= 20, facecolor='red')
-
-
-def drawWR(ax, prices, periods=[6], hlines=[-98, -93, -88, -83.5, -25, -11]):
-    high, low, close = prices[0], prices[1], prices[2]
-    for period in periods:
-        wr = ind.WILLR(high, low, close, time_period=period)
-        ax.plot(wr, label='wr%d' % period)
-    drawHline(ax, hlines)
-
-
-def drawDMI(ax, prices, periods=[14, 6], hlines=[10, 12, 16, 20, 22]):
-    high, low, close = prices[0], prices[1], prices[2]
-    pdi, mdi = ind.DI(high, low, close, time_period=periods[0])
-    adx = ind.ADX(high, low, close, time_period=periods[1])
-    adxr = ind.ADXR(high, low, close, time_period=periods[1])
-    ax.plot(pdi, label='pdi%d' % periods[0])
-    # ax.plot(mdi, label='mdi%d' % periods[0])
-    # ax.plot(adx, label='adx%d' % periods[1])
-    # ax.plot(adxr, label='adxr%d' % periods[1])
-    # ax.bar(pdi.index, (pdi - mdi).clip_lower(0), facecolor='r')
-    # ax.bar(pdi.index, (pdi - mdi).clip_upper(0), facecolor='g')
-    drawHline(ax, hlines)
-
-
-def drawCCI(ax, prices, periods=[14], hlines=[-231, -138, -110, -83, 50]):
-    high, low, close = prices[0], prices[1], prices[2]
-    for period in periods:
-        cci = ind.CCI(high, low, close, time_period=period)
-        ax.plot(cci, label='cci%d' % period)
-    drawHline(ax, hlines)
-
-
-##########################################################################################
-
-def drawRSI(ax, price, periods=[6, 12, 24], hlines=[20, 50, 80]):
-    for period in periods:
-        rsi = ind.RSI(price, time_period=period)
-        ax.plot(rsi, label='rsi%d' % period)
-    drawHline(ax, hlines)
-
-
-def drawMACD(ax, price, periods=[12, 16, 9]):
-    macd, macd_signal, macd_histogram = ind.MACD(price, fast_period=periods[0], slow_period=periods[1],
-                                                 signal_period=periods[2])
-    ax.plot(macd, label='macd%d' % periods[0])
-    ax.plot(macd_signal, label='macd_singal%d' % periods[1])
-    ax.bar(price.index, macd_histogram.clip_lower(0), facecolor='r')
-    ax.bar(price.index, macd_histogram.clip_upper(0), facecolor='g')
+def get_chart_data_from_web(code, start_date='', end_date='', append_ind=True):
+    data = web.DataReader(code, data_source='yahoo', start=start_date, end=end_date)
+    data.rename(columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume'},
+                inplace=True)
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    data['date'] = data.index
+    data['date'].apply(lambda date: date.date())
+    data.index = np.arange(0, 0 + len(data))
+    return data
 
 
 def drawHline(ax, hlines):
@@ -118,74 +29,375 @@ def drawHline(ax, hlines):
         ax.axhline(y=hline, color='grey', linestyle="--", linewidth=1)
 
 
-def drawDate(ax, date):
+def drawDate(ax, data):
     # weeksLoc = mpl.dates.WeekdayLocator()
     # ax.xaxis.set_minor_locator(weeksLoc)
-    date_index = np.arange(0, 0 + len(data.index))
+    date = data['date']
+    date_index = np.arange(0, 0 + len(date))
     ax.set_xticks(date_index)
-    ax.set_xticklabels(ts.date() for ts in date)
+    ax.set_xticklabels(date)
     for label in ax.get_xticklabels():
         label.set_visible(False)
-    for label in ax.get_xticklabels()[::20]:
+    for label in ax.get_xticklabels()[::50]:
         label.set_visible(True)
 
-    # monthsLoc = plt.dates.MonthLocator()
-    # ax.xaxis.set_major_locator(monthsLoc)
+
+def drawK(ax, data):
+    date, open, close, high, low, volume = data.index, data['open'], data['close'], data['high'], data['low'], data[
+        'volume']
+    date_index = np.arange(0, 0 + len(date))
+    mpf.candlestick_ohlc(ax, zip(date_index, open, high, low, close),
+                         colorup='red', colordown='green')
 
 
-data = web.DataReader('AAPL', data_source='yahoo', start='1/1/2018', end='1/30/2019')
-#print ts.adfuller(data['Adj Close'])
-data = pd.DataFrame(data)
-start = mdates.date2num(data.index.to_pydatetime())[0]
-date_index = np.arange(0, 0 + len(data.index))
-data['Date'] = data.index
-data.index = date_index
-date, high, low, open, close, volume = data['Date'], data['High'], data['Low'], data['Open'], data['Close'], data[
-    'Volume']
-
-fig = plt.figure(figsize=(16, 8))
-ind_size = 2
-
-ax = fig.add_subplot(ind_size, 1, 1)
-drawSMA(ax, close)
-# drawEMA(ax, close, periods=[5, 10, 20])
-
-drawK(ax, date_index, high, low, open, close)
-# drawSMA(ax, close)
+def drawC(ax, data):
+    close = data['close']
+    ax.plot(close, color='grey')
 
 
-# drawDMI(ax, [high, low, close])
-drawWR(ax, [high, low, close])
-drawDate(ax, date)
-ax = plt.twinx()
-drawKDJ(ax, [high, low, close])
-drawDate(ax, date)
-# ax.plot(close)
-# drawBBANDS(ax, close)
-
-ax = fig.add_subplot(ind_size, 1, 2)
-# drawMACD(ax, close)
-drawCCI(ax, [high, low, close])
-# ax.plot(close, color='grey')
-# drawWR(ax, [high, low, close])
-# drawDMI(ax, [high, low, close])
-drawDate(ax, date)
-ax = plt.twinx()
-ax.plot(close, color='grey')
-drawDate(ax, date)
-
-# ax = plt.twinx()
-# drawKDJ(ax, [high, low, close])
+def drawBBANDS(ax, data, period=20):
+    if data.__contains__('upper_band') & data.__contains__('middle_band') & data.__contains__('lower_band'):
+        upper_band = data['upper_band']
+        middle_band = data['middle_band']
+        lower_band = data['lower_band']
+    else:
+        close = data['close']
+        upper_band, middle_band, lower_band = ind.BBANDS(close, time_period=period)
+    ax.plot(upper_band, label='upper_band')
+    ax.plot(middle_band, label='middle_band')
+    ax.plot(lower_band, label='lower_band')
 
 
-# ax = fig.add_subplot(ind_size, 1, 3)
+def drawSMA(ax, data, periods=[5, 10, 20, 30, 60, 120]):
+    for period in periods:
+        if data.__contains__('sma%d' % period):
+            sma = data['sma%d' % period]
+        elif data.__contains__('sma'):
+            sma = data['sma']
+        else:
+            close = data['close']
+            sma = ind.SMA(close, period)
+        ax.plot(sma, label='sma%d' % period, linewidth=1)
 
-# # ax = plt.twinx()
-# drawKDJ(ax, [high, low, close])
-# ax = fig.add_subplot(ind_size, 1, 4)
-# drawWR(ax, [high, low, close])
 
-plt.legend()
-plt.subplots_adjust(hspace=0.1)
-# plt.grid(True)
-plt.show()
+def drawEMA(ax, data, periods=[5, 10, 20, 30, 60, 120]):
+    for period in periods:
+        if data.__contains__('ema%d' % period):
+            ema = data['ema%d' % period]
+        elif data.__contains__('ema'):
+            ema = data['ema']
+        else:
+            close = data['close']
+            ema = ind.SMA(close, period)
+        ax.plot(ema, label='ema%d' % period)
+
+
+def drawMINMAX(ax, data, periods=[20]):
+    for period in periods:
+        if data.__contains__('min_%d' % period) & data.__contains__('max_%d' % period):
+            min = data['min_%d' % period]
+            max = data['max_%d' % period]
+        # elif data.__contains__('min') & data.__contains__('max'):
+        #     min = data['min']
+        #     max = data['max']
+        else:
+            close = data['close']
+            min = ind.MIN(close, period)
+            max = ind.MAX(close, period)
+        ax.plot(min, label='min%d' % period, linewidth=1)
+        ax.plot(max, label='max%d' % period, linewidth=1)
+        ax.set_ylabel('MIN_MAX')
+
+
+################################################################################################
+def drawKDJ(ax, data, periods=[9, 3, 3], hlines=[-14, -3, 6.5, 17, 95]):
+    if data.__contains__('slow_k') & data.__contains__('slow_d'):
+        slow_k = data['slow_k']
+        slow_d = data['slow_d']
+    else:
+        close, high, low = data['close'], data['high'], data['low']
+        slow_k, slow_d = ind.STOCH(high, low, close, fastk_period=periods[0], slowk_period=periods[1],
+                                   slowd_period=periods[2])
+    ax.plot(slow_d, label='d')
+    ax.plot(slow_k, label='k')
+    ax.plot(3 * slow_k - 2 * slow_d, label='j')
+    drawHline(ax, hlines)
+    # ax.fill_between(time, 80, rsi, where=rsi >= 80, facecolor='green')
+    # ax.fill_between(time, 20, rsi, where=rsi <= 20, facecolor='red')
+    ax.set_ylabel('KDJ')
+
+
+def drawWR(ax, data, periods=[6, 89], hlines=[-98, -83.5, -25, -11]):
+    for period in periods:
+        if data.__contains__('willr_%d' % period):
+            willr = data['willr_%d' % period]
+        elif data.__contains__('willr'):
+            willr = data['willr']
+        else:
+            close, high, low = data['close'], data['high'], data['low']
+            willr = ind.WILLR(high, low, close, time_period=period)
+        ax.plot(willr, label='wr%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('WR')
+
+
+def drawDMI(ax, data, periods=[6, 14], hlines=[10, 12, 16, 20, 22]):
+    if data.__contains__('pdi') & data.__contains__('mdi') & data.__contains__('adx') & data.__contains__('adxr'):
+        pdi = data['pdi']
+        mdi = data['mdi']
+        adx = data['adx']
+        adxr = data['adxr']
+    else:
+        close, high, low = data['close'], data['high'], data['low']
+        pdi, mdi = ind.DI(high, low, close, time_period=periods[0])
+        adx = ind.ADX(high, low, close, time_period=periods[1])
+        adxr = ind.ADXR(high, low, close, time_period=periods[1])
+    ax.plot(pdi, label='pdi%d' % periods[0])
+    # ax.plot(mdi, label='mdi%d' % periods[0])
+    # ax.plot(adx, label='adx%d' % periods[1])
+    # ax.plot(adxr, label='adxr%d' % periods[1])
+    drawHline(ax, hlines)
+    ax.set_ylabel('DMI')
+
+
+def drawCCI(ax, data, periods=[14], hlines=[-231, -138, -110, -83, 50]):
+    for period in periods:
+        if data.__contains__('cci'):
+            cci = data['cci']
+        else:
+            close, high, low = data['close'], data['high'], data['low']
+            cci = ind.CCI(high, low, close, time_period=period)
+        ax.plot(cci, label='cci%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('CCI')
+
+
+################################################################################################
+
+def drawRSI(ax, data, periods=[6, 12, 24], hlines=[20, 50, 80]):
+    for period in periods:
+        if data.__contains__('rsi%d' % period):
+            rsi = data['rsi%d' % period]
+        elif data.__contains__('rsi'):
+            rsi = data['rsi']
+        else:
+            price = data['close']
+            rsi = ind.RSI(price, time_period=period)
+        ax.plot(rsi, label='rsi%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('RSI')
+
+
+def drawMACD(ax, data, periods=[12, 16, 9]):
+    close = data['close']
+    if data.__contains__('macd') & data.__contains__('macd_signal') & data.__contains__('macd_histogram'):
+        macd = data['macd']
+        macd_signal = data['macd_signal']
+        macd_histogram = data['macd_histogram']
+    else:
+        macd, macd_signal, macd_histogram = ind.MACD(close, fast_period=periods[0], slow_period=periods[1],
+                                                     signal_period=periods[2])
+    ax.plot(macd, label='macd%d' % periods[0])
+    ax.plot(macd_signal, label='macd_singal%d' % periods[1])
+    ax.bar(close.index, macd_histogram.clip_lower(0), facecolor='r')
+    ax.bar(close.index, macd_histogram.clip_upper(0), facecolor='g')
+    ax.set_ylabel('MACD')
+
+
+def drawTRIX(ax, data, periods=[14], hlines=[]):
+    for period in periods:
+        if data.__contains__('trix%d' % period):
+            trix = data['rsi%d' % period]
+        elif data.__contains__('trix'):
+            trix = data['trix']
+        else:
+            price = data['close']
+            trix = ind.TRIX(price, time_period=period)
+        ax.plot(trix, label='trix%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('TRIX')
+
+
+def drawEMV(ax, data, periods=[14], hlines=[]):
+    for period in periods:
+        if data.__contains__('emv%d' % period):
+            emv = data['emv%d' % period]
+        elif data.__contains__('emv'):
+            emv = data['emv']
+        else:
+            price = data['close']
+            emv = ind.EMV(price, time_period=period)
+        ax.plot(emv, label='emv%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('EMV')
+
+
+def drawMFI(ax, data, periods=[14], hlines=[]):
+    for period in periods:
+        if data.__contains__('mfi%d' % period):
+            mfi = data['mfi%d' % period]
+        elif data.__contains__('mfi'):
+            mfi = data['mfi']
+        else:
+            price = data['close']
+            mfi = ind.MFI(price, time_period=period)
+        ax.plot(mfi, label='mfi%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('MFI')
+
+
+def drawOBV(ax, data, periods=[14], hlines=[]):
+    for period in periods:
+        if data.__contains__('obv%d' % period):
+            obv = data['obv%d' % period]
+        elif data.__contains__('obv'):
+            obv = data['obv']
+        else:
+            price = data['close']
+            obv = ind.OBV(price, time_period=period)
+        ax.plot(obv, label='obv%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('OBV')
+
+
+def drawROC(ax, data, periods=[14], hlines=[]):
+    for period in periods:
+        if data.__contains__('roc%d' % period):
+            roc = data['roc%d' % period]
+        elif data.__contains__('roc'):
+            roc = data['roc']
+        else:
+            price = data['close']
+            roc = ind.ROC(price, time_period=period)
+        ax.plot(roc, label='roc%d' % period)
+    drawHline(ax, hlines)
+    ax.set_ylabel('ROC')
+
+
+################################################################################################
+
+
+def drawInd(ind='', ax=None, data=None):
+    if ind == 'C':
+        drawC(ax, data)
+    if ind == 'K':
+        drawK(ax, data)
+    if ind == 'SMA':
+        drawSMA(ax, data)
+    if ind == 'BBANDS':
+        drawBBANDS(ax, data)
+    if ind == 'MINMAX':
+        drawMINMAX(ax, data)
+    if ind == 'WR':
+        drawWR(ax, data)
+    if ind == 'DMI':
+        drawDMI(ax, data)
+    if ind == 'KDJ':
+        drawKDJ(ax, data)
+    if ind == 'CCI':
+        drawCCI(ax, data)
+    if ind == 'MACD':
+        drawMACD(ax, data)
+    if ind == 'RSI':
+        drawRSI(ax, data)
+    if ind == 'EMV':
+        drawEMV(ax, data)
+    if ind == 'TRIX':
+        drawTRIX(ax, data)
+    if ind == 'MFI':
+        drawMFI(ax, data)
+    if ind == 'OBV':
+        drawOBV(ax, data)
+    if ind == 'ROC':
+        drawROC(ax, data)
+
+
+def drawAll(code, data, types=[['K', 'SMA']]):
+    row = len(types)
+    fig = plt.figure(figsize=(12, 3 * row))
+    plt.title(code)
+    i = 0
+    for type in types:
+        i += 1
+        ax = fig.add_subplot(row, 1, i)
+
+        j = 0
+        for ind in type:
+            j += 1
+            if (i != 1) & (j == 2):
+                ax = plt.twinx()
+            drawInd(ind, ax, data)
+            drawDate(ax, data)
+            ax.legend(fontsize=9, ncol=3)
+
+    plt.subplots_adjust(hspace=0.1)
+    # plt.plot(CCI, 'k', lw=0.75, linestyle='-', label='CCI')
+    # plt.legend(loc=2, prop={'size': 9.5})
+    # plt.setp(plt.gca().get_xticklabels(), rotation=30)
+    # plt.grid(True)
+    plt.show()
+
+
+def drawBuy(codes):
+    col = 2
+    matrix = np.reshape(codes, (-1, col))
+    row = len(matrix)
+    fig = plt.figure(figsize=(8 * col, 4 * row))
+    i = 0
+    for code in codes:
+        i += 1
+        data = store.get_chart_data_from_db("000%d.SZ" % code, '20180101')
+        # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
+        close, pdi, wr, wr_89 = data['close'], data['pdi'], data['willr'], data['willr_89']
+        ax = fig.add_subplot(row, col, i)
+        ax.plot(close, c='grey')
+        # buy = close[(wr <= -98)]
+        # ax.scatter(buy.index, buy, c='red')
+        # buy = close[(wr <= -93) & (wr > -98)]
+        # ax.scatter(buy.index, buy, c='orange')
+        # buy = close[(wr <= -88) & (wr > -93)]
+        # ax.scatter(buy.index, buy, c='yellow')
+        # buy = close[(wr <= -83) & (wr > -88)]
+        # ax.scatter(buy.index, buy, c='green')
+
+        # buy = close[(pdi <= 10) & (wr < -88)]
+        # ax.scatter(buy.index, buy, c='red')
+        # buy = close[(pdi <= 12) & (pdi > 10) & (wr < -88)]
+        # ax.scatter(buy.index, buy, c='orange')
+        # buy = close[(pdi <= 16) & (pdi > 12) & (wr < -88)]
+        # ax.scatter(buy.index, buy, c='yellow')
+        # buy = close[(pdi <= 20) & (pdi > 16) & (wr < -88)]
+        # ax.scatter(buy.index, buy, c='green')
+
+        buy = close[ind.UP_CROSS(wr_89, -83.5) & ind.LESS_THAN(wr, -50)]
+        # buy = close[ind.LESS_THAN(wr_89, -97)  & ind.BOTTOM(wr_89)]
+        ax.scatter(buy.index, buy, s=20, c='green')
+        # ax = plt.twinx()
+        # ax.plot(wr_89)
+        # ax.plot(wr)
+        # drawHline(ax, [-97, -83.5])
+
+    plt.legend()
+    plt.subplots_adjust(hspace=0.1)
+    plt.show()
+
+
+code = 'GOOG'
+# data = store.get_chart_data_from_db(code, '20180101')
+# data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
+# K,SMA,WR,DMI,KDJ,CCI,RSI,MACD
+# types = [['C', 'MINMAX'], ['C', 'WR'], ['C', 'DMI'], ['C', 'KDJ'], ['C', 'CCI'], ['C', 'RSI'], ['C', 'MACD']]
+
+# types = [['C', 'MINMAX'], ['C', 'EMV'], ['C', 'TRIX'], ['C', 'OBV'], ['C', 'MFI'], ['C', 'RSI'], ['C', 'ROC']]
+# drawAll(code, data, types=types)
+
+
+################################################################################################
+a = np.arange(0, 12)
+# 501 516 598 589 582 586 589
+print np.reshape(a, (-1, 4)).shape[0]
+codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
+codes = np.random.randint(600, 700, [10])
+print codes
+
+drawBuy(codes)

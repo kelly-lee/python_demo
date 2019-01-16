@@ -142,6 +142,33 @@ def drawCCI(ax, data, periods=[14], hlines=[-231, -138, -110, -83, 50]):
 
 ################################################################################################
 
+def drawRSI(ax, price, periods=[6, 12, 24], hlines=[20, 50, 80]):
+    for period in periods:
+        if data.__contains__('rsi'):
+            rsi = data['rsi']
+        else:
+            rsi = ind.RSI(price, time_period=period)
+        ax.plot(rsi, label='rsi%d' % period)
+    drawHline(ax, hlines)
+
+
+def drawMACD(ax, data, periods=[12, 16, 9]):
+    close = data['close']
+    if data.__contains__('macd') & data.__contains__('macd_signal') & data.__contains__('macd_histogram'):
+        macd = data['macd']
+        macd_signal = data['macd_signal']
+        macd_histogram = data['macd_histogram']
+    else:
+        macd, macd_signal, macd_histogram = ind.MACD(close, fast_period=periods[0], slow_period=periods[1],
+                                                     signal_period=periods[2])
+    ax.plot(macd, label='macd%d' % periods[0])
+    ax.plot(macd_signal, label='macd_singal%d' % periods[1])
+    ax.bar(close.index, macd_histogram.clip_lower(0), facecolor='r')
+    ax.bar(close.index, macd_histogram.clip_upper(0), facecolor='g')
+
+
+################################################################################################
+
 def drawMin(ax, data):
     close, high, low = data['close'], data['high'], data['low']
     # pdi, mdi = ind.DI(high, low, close, time_period=6)
@@ -180,6 +207,10 @@ def drawInd(ind='', ax=None, data=None):
         drawKDJ(ax, data)
     if ind == 'CCI':
         drawCCI(ax, data)
+    if ind == 'MACD':
+        drawMACD(ax, data)
+    if ind == 'RSI':
+        drawRSI(ax, data)
 
 
 def drawAll(data, types=[['K', 'SMA']]):
@@ -239,14 +270,14 @@ def drawBuy(codes):
 
 
 # data = get_chart_data_from_web('AMZN', '1/1/2018', '1/30/2019')
-# data = store.get_chart_data_from_db('000001.SZ', '20180101')
-# types = [['K', 'SMA'], ['WR', 'DMI'], ['KDJ'], ['CCI']]
-# drawAll(data, types=types)
+data = store.get_chart_data_from_db('000001.SZ', '20180101')
+types = [['K', 'SMA'], ['WR', 'DMI'], ['KDJ'], ['CCI'], ['RSI'], ['MACD']]
+drawAll(data, types=types)
 ################################################
-a = np.arange(0, 12)
-# 501 516 598 589 582 586 589
-print np.reshape(a, (-1, 4)).shape[0]
-codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
-codes = np.random.randint(600, 700, [10])
-print codes
-drawBuy(codes)
+# a = np.arange(0, 12)
+# # 501 516 598 589 582 586 589
+# print np.reshape(a, (-1, 4)).shape[0]
+# codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
+# codes = np.random.randint(600, 700, [10])
+# print codes
+# drawBuy(codes)

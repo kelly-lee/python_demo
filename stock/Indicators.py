@@ -24,6 +24,43 @@ import numpy as np
 # ind = Indicator(data)
 # print DIFF()
 
+def LESS_THAN(price, line):
+    return price <= line
+
+
+def GREAT_THAN(price, line):
+    return price >= line
+
+
+def BETWEEN(price, low, high):
+    return (price >= low) & (price <= high)
+
+
+def UP_CROSS(price, line):
+    return (price.shift(1) <= line) & (price >= line)
+
+
+def DOWN_CROSS(price, line):
+    return (price.shift(1) >= line) & (price <= line)
+
+
+def GOLDEN_CROSS(fast, slow):
+    return (fast.shift(1) <= slow.shift(1)) & (fast >= slow)
+
+
+def DEAD_CROSS(fast, slow):
+    return (fast.shift(1) >= slow.shift(1)) & (fast <= slow)
+
+
+def TOP(price):
+    return (price.shift(2) <= price.shift(1)) & (price.shift(1) >= price)
+
+
+def BOTTOM(price):
+    return (price.shift(2) >= price.shift(1)) & (price.shift(1) <= price)
+
+
+###############################################################################
 
 def DIFF(price, time_period=1):
     return price.diff(time_period)
@@ -387,10 +424,6 @@ def STOCHRSI(data, time_period=14):
     return (rsi - ll_rsi) / (hh_rsi - ll_rsi)
 
 
-def CROSS(close, fast, slow):
-    return
-
-
 def AR(high, low, open, time_period):
     open_sum = SUM(open.time_period)
     high_sum = SUM(high.time_period)
@@ -408,6 +441,10 @@ def ochl2ind(open, close, high, low, volume):
     #     data['dema_%d' % period] = DEMA(close, period)
     #     data['smma_%d' % period] = SMMA(close, period)
     #     data['tema_%d' % period] = TEMA(close, period)
+
+    for period in [5, 10, 20, 30]:
+        data['min_%d' % period] = MIN(close, period)
+        data['max_%d' % period] = MAX(close, period)
 
     # bb
     upper_band, middle_band, lower_band = BBANDS(close, 5, 2, 2)
@@ -451,11 +488,11 @@ def ochl2ind(open, close, high, low, volume):
     data['rsi'] = RSI(close, 14)
     data['mfi'] = MFI(high, low, close, volume, 14)
     data['willr'] = WILLR(high, low, close, 14)
+    data['willr_89'] = WILLR(high, low, close, 89)
     data['obv'] = OBV(close, volume)
     data['vol_roc'] = ROC(volume)
     data['roc'] = ROC(close, 6)
     # min,max
-    data['min'] = MIN(close, 10)
-    data['max'] = MAX(close, 5)
+
     data['c_min'] = close - MIN(close, 10)
     return data
