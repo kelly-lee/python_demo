@@ -339,16 +339,16 @@ def drawAll(code, data, types=[['K', 'SMA']]):
 
 
 def drawBuy(codes):
-    col = 2
+    col = 4
     matrix = np.reshape(codes, (-1, col))
     row = len(matrix)
-    fig = plt.figure(figsize=(8 * col, 4 * row))
+    fig = plt.figure(figsize=(4 * col, 2 * row))
     i = 0
     for code in codes:
         i += 1
-        data = store.get_chart_data_from_db("000%d.SZ" % code, '20180101')
+        data = store.get_chart_data_from_db("600%d.SH" % code, '20180101')
         # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
-        close, pdi, wr, wr_89 = data['close'], data['pdi'], data['willr'], data['willr_89']
+        close, pdi, wr, wr_89, bias = data['close'], data['pdi'], data['willr'], data['willr_89'], data['bias']
         ax = fig.add_subplot(row, col, i)
         ax.plot(close, c='grey')
         # buy = close[(wr <= -98)]
@@ -369,13 +369,14 @@ def drawBuy(codes):
         # buy = close[(pdi <= 20) & (pdi > 16) & (wr < -88)]
         # ax.scatter(buy.index, buy, c='green')
 
-        buy = close[ind.UP_CROSS(wr_89, -83.5) & ind.LESS_THAN(wr, -50)]
+        # buy = close[ind.UP_CROSS(wr_89, -83.5) & ind.LESS_THAN(wr, -50)]
         # buy = close[ind.LESS_THAN(wr_89, -97)  & ind.BOTTOM(wr_89)]
+        buy = close[ind.LESS_THAN(bias, -12) & ind.BOTTOM(bias) & ind.LESS_THAN(wr_89, -83.5)]
         ax.scatter(buy.index, buy, s=20, c='green')
         # ax = plt.twinx()
-        # ax.plot(wr_89)
+        # ax.plot(bias)
         # ax.plot(wr)
-        # drawHline(ax, [-97, -83.5])
+        # drawHline(ax, [-12])
 
     plt.legend()
     plt.subplots_adjust(hspace=0.1)
@@ -397,7 +398,7 @@ a = np.arange(0, 12)
 # 501 516 598 589 582 586 589
 print np.reshape(a, (-1, 4)).shape[0]
 codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
-codes = np.random.randint(600, 700, [10])
+codes = np.random.randint(100, 700, [12])
 print codes
 
 drawBuy(codes)

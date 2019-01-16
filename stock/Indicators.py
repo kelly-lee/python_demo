@@ -431,6 +431,11 @@ def AR(high, low, open, time_period):
     return (high_sum - open_sum) / (open_sum - low_sum)
 
 
+def BIAS(price, time_period=24):
+    man = SMA(price, time_period)
+    return (price - man) / man * 100
+
+
 def ochl2ind(open, close, high, low, volume):
     data = pd.DataFrame()
 
@@ -493,6 +498,7 @@ def ochl2ind(open, close, high, low, volume):
     data['vol_roc'] = ROC(volume)
     data['roc'] = ROC(close, 6)
     # min,max
+    data['bias'] = BIAS(close, 24)
 
     data['c_min'] = close - MIN(close, 10)
     return data
