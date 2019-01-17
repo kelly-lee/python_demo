@@ -396,6 +396,10 @@ def EMV(high, low, volume, time_period=14):
     return SMA(emv, time_period)
 
 
+def BIAS(price, time_period=24):
+    man = SMA(price, time_period)
+    return (price - man) / man * 100
+
 ###########################################################################
 
 
@@ -431,9 +435,7 @@ def AR(high, low, open, time_period):
     return (high_sum - open_sum) / (open_sum - low_sum)
 
 
-def BIAS(price, time_period=24):
-    man = SMA(price, time_period)
-    return (price - man) / man * 100
+
 
 
 def ochl2ind(open, close, high, low, volume):

@@ -383,12 +383,12 @@ def drawBuy(codes):
     plt.show()
 
 
-code = 'GOOG'
+# code = 'GOOG'
 # data = store.get_chart_data_from_db(code, '20180101')
 # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
 # K,SMA,WR,DMI,KDJ,CCI,RSI,MACD
 # types = [['C', 'MINMAX'], ['C', 'WR'], ['C', 'DMI'], ['C', 'KDJ'], ['C', 'CCI'], ['C', 'RSI'], ['C', 'MACD']]
-
+#
 # types = [['C', 'MINMAX'], ['C', 'EMV'], ['C', 'TRIX'], ['C', 'OBV'], ['C', 'MFI'], ['C', 'RSI'], ['C', 'ROC']]
 # drawAll(code, data, types=types)
 

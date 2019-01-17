@@ -53,6 +53,15 @@ def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
     print 'error code list : ', error_code
 
 
+def get_basic_stock(start='', end=''):
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+    stock_basics = pro.stock_basic(fields='ts_code,symbol,name')
+    stock_basics = stock_basics[(stock_basics.symbol < end) & (stock_basics.symbol > start)][
+        ['ts_code', 'name']]
+    return stock_basics
+
+
 def get_daily_data(type='300', size=0, start_date='', end_date=''):
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     df = pd.read_sql('daily_data_%s' % type, engine)
@@ -113,3 +122,37 @@ def get_chart_data_from_db(code='', start_date='', end_date='', append_ind=True)
     data.rename(columns={'trade_date': 'date'}, inplace=True)
     data.index = np.arange(0, 0 + len(data))
     return data
+
+
+def save_nasdaq_company():
+    nasdaq_company = pd.read_csv('NASDAQ_companylist.csv')
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    nasdaq_company.to_sql('nasdaq_company', engine, if_exists='append')
+
+
+def get_nasdaq_company():
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    nasdaq_company = pd.read_sql('nasdaq_company', engine)
+    return nasdaq_company
+
+
+import pandas_datareader.data as web
+
+
+nasdaq_daily = web.DataReader('GOOG', start='1/1/2018', data_source='yahoo')
+print nasdaq_daily
+
+
+engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+nasdaq_companys = get_nasdaq_company()
+for index, nasdaq_company in nasdaq_companys.iterrows():
+    if nasdaq_company['index'] < 7:
+        continue
+    symbol = nasdaq_company['Symbol']
+    print nasdaq_company['index'], symbol
+    nasdaq_daily = web.DataReader(symbol, start='1/1/2018', data_source='yahoo')
+    nasdaq_daily.index = nasdaq_daily.index.to_period("D")
+    nasdaq_daily['symbol'] = symbol
+    nasdaq_daily.rename(columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume',
+                                 'Adj Close': 'adj_close'}, inplace=True)
+    nasdaq_daily.to_sql('nasdaq_daily', engine, if_exists='append')
