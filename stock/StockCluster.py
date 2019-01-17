@@ -6,6 +6,7 @@ import numpy as np
 from sklearn import cluster, covariance, manifold
 import TushareStore as store
 
+
 # X(N,M) M为股票数量，N为时间点个数
 def fit(X):
     X /= X.std(axis=0)
@@ -19,7 +20,7 @@ def fit(X):
     # #############################################################################
     # 非线性降维
     node_position_model = manifold.LocallyLinearEmbedding(n_components=2, eigen_solver='dense',
-                                                          n_neighbors=labels.max() + 1)
+                                                          n_neighbors=6)
     embedding = node_position_model.fit_transform(X.T).T
     partial_correlations = edge_model.precision_.copy()
     return labels, partial_correlations, embedding
@@ -106,7 +107,7 @@ def loadData(start_code='', end_code='', start_date='', end_date=''):
     stock_basics = store.get_basic_stock(start=start_code, end=end_code)
     for index, stock_basic in stock_basics.iterrows():
         code, name = stock_basic['ts_code'], stock_basic['name']
-        data = store.get_chart_data_from_db(code, start_date, end_date, append_ind=False)
+        data = store.get_chart_data_from_db(code, '', start_date, end_date, append_ind=False)
         if len(data) == 251:
             quotes.append(data[['open', 'close']])
             # quotes.append((data.close - data.open).T.values)
@@ -118,7 +119,60 @@ def loadData(start_code='', end_code='', start_date='', end_date=''):
     return variation.copy().T, np.array(names)
 
 
-X, names = loadData(start_code='6000', end_code='6001', start_date='20180101')
+def loadNasdaqData(start_code='', end_code='', start_date='', end_date=''):
+    quotes = []
+    names = []
+    stock_basics = pd.read_csv('NASDAQ_companylist.csv')
+    stock_basics = stock_basics[stock_basics['Sector'] == 'Technology']
+    for index, stock_basic in stock_basics.iterrows():
+        code, name = stock_basic['Symbol'], stock_basic['Symbol']
+        data = get_nasdaq_daily_data_ind(code, '', start_date, end_date, append_ind=False)
+        print len(data), code, name
+        if len(data) != 262:
+            continue
+        quotes.append(data[['open', 'close']])
+        # quotes.append((data.close - data.open).T.values)
+        names.append(name)
+
+    close_prices = np.vstack([q['close'].values for q in quotes])
+    open_prices = np.vstack([q['open'].values for q in quotes])
+    variation = close_prices - open_prices
+    return variation.copy().T, np.array(names)
+
+
+# X, names = loadData(start_code='6000', end_code='6001', start_date='20180101')
+
+import MySQLdb as db
+import pandas as pd
+import Indicators as ind
+
+
+def get_nasdaq_daily_data_ind(symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM nasdaq_technology_daily where 1=1 "
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    if (len(trade_date) > 0) & (not trade_date.isspace()):
+        sql += "and date = %(date)s "
+    if (len(start_date) > 0) & (not start_date.isspace()):
+        sql += "and date >= %(start_date)s "
+    if (len(end_date) > 0) & (not end_date.isspace()):
+        sql += "and date <= %(end_date)s "
+    sql += "order by date asc "
+    print sql
+    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
+                                    'end_date': end_date}, con=con)
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    df = df.append(data)
+    con.close()
+    return df
+
+
+X, names = loadNasdaqData(start_date='2018-01-01')
 labels, partial_correlations, embedding = fit(X)
 for i in range(labels.max() + 1):
     print('Cluster %i: %s' % ((i + 1), ', '.join(names[labels == i])))

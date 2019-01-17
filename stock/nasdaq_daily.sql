@@ -33,6 +33,6 @@ CREATE TABLE `nasdaq_daily` (
   `symbol` varchar(16) NOT NULL,
   PRIMARY KEY (`id`),
   KEY `ix_nasdaq_daily_Date` (`date`)
-) ENGINE=InnoDB AUTO_INCREMENT=3349 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -138,21 +138,10 @@ def get_nasdaq_company():
 
 import pandas_datareader.data as web
 
+# save_nasdaq_company()
 
-nasdaq_daily = web.DataReader('GOOG', start='1/1/2018', data_source='yahoo')
-print nasdaq_daily
+# nasdaq_daily = web.DataReader('GOOG', start='1/1/2018', data_source='yahoo')
+# print nasdaq_daily
+#
+#743
 
-
-engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-nasdaq_companys = get_nasdaq_company()
-for index, nasdaq_company in nasdaq_companys.iterrows():
-    if nasdaq_company['index'] < 7:
-        continue
-    symbol = nasdaq_company['Symbol']
-    print nasdaq_company['index'], symbol
-    nasdaq_daily = web.DataReader(symbol, start='1/1/2018', data_source='yahoo')
-    nasdaq_daily.index = nasdaq_daily.index.to_period("D")
-    nasdaq_daily['symbol'] = symbol
-    nasdaq_daily.rename(columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume',
-                                 'Adj Close': 'adj_close'}, inplace=True)
-    nasdaq_daily.to_sql('nasdaq_daily', engine, if_exists='append')

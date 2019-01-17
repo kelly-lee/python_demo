@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
 import matplotlib.pyplot as plt
-import TushareStore as store
+# import TushareStore as store
 import Indicators as ind
 import mpl_finance as mpf
 import pandas_datareader.data as web
@@ -225,8 +225,8 @@ def drawEMV(ax, data, periods=[14], hlines=[]):
         elif data.__contains__('emv'):
             emv = data['emv']
         else:
-            price = data['close']
-            emv = ind.EMV(price, time_period=period)
+            low, high, volume = data['low'], data['high'], data['volume']
+            emv = ind.EMV(low, high, volume, time_period=period)
         ax.plot(emv, label='emv%d' % period)
     drawHline(ax, hlines)
     ax.set_ylabel('EMV')
@@ -239,23 +239,20 @@ def drawMFI(ax, data, periods=[14], hlines=[]):
         elif data.__contains__('mfi'):
             mfi = data['mfi']
         else:
-            price = data['close']
-            mfi = ind.MFI(price, time_period=period)
+            high, low, close, volume = data['low'], data['high'], data['close'], data['volume']
+            mfi = ind.MFI(high, low, close, volume, time_period=period)
         ax.plot(mfi, label='mfi%d' % period)
     drawHline(ax, hlines)
     ax.set_ylabel('MFI')
 
 
-def drawOBV(ax, data, periods=[14], hlines=[]):
-    for period in periods:
-        if data.__contains__('obv%d' % period):
-            obv = data['obv%d' % period]
-        elif data.__contains__('obv'):
-            obv = data['obv']
-        else:
-            price = data['close']
-            obv = ind.OBV(price, time_period=period)
-        ax.plot(obv, label='obv%d' % period)
+def drawOBV(ax, data, hlines=[]):
+    if data.__contains__('obv'):
+        obv = data['obv']
+    else:
+        close, volume = data['close'], data['volume']
+        obv = ind.OBV(close, volume)
+    ax.plot(obv, label='obv')
     drawHline(ax, hlines)
     ax.set_ylabel('OBV')
 
@@ -314,7 +311,7 @@ def drawInd(ind='', ax=None, data=None):
 
 def drawAll(code, data, types=[['K', 'SMA']]):
     row = len(types)
-    fig = plt.figure(figsize=(12, 3 * row))
+    fig = plt.figure(figsize=(4,  row))
     plt.title(code)
     i = 0
     for type in types:
@@ -382,7 +379,6 @@ def drawBuy(codes):
     plt.subplots_adjust(hspace=0.1)
     plt.show()
 
-
 # code = 'GOOG'
 # data = store.get_chart_data_from_db(code, '20180101')
 # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
@@ -394,11 +390,11 @@ def drawBuy(codes):
 
 
 ################################################################################################
-a = np.arange(0, 12)
-# 501 516 598 589 582 586 589
-print np.reshape(a, (-1, 4)).shape[0]
-codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
-codes = np.random.randint(100, 700, [12])
-print codes
-
-drawBuy(codes)
+# a = np.arange(0, 12)
+# # 501 516 598 589 582 586 589
+# print np.reshape(a, (-1, 4)).shape[0]
+# codes = ['AMZN', 'AAPL', 'GOOG', 'FB']
+# codes = np.random.randint(100, 700, [12])
+# print codes
+#
+# drawBuy(codes)
