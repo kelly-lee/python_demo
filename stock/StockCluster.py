@@ -122,16 +122,15 @@ def loadData(start_code='', end_code='', start_date='', end_date=''):
 def loadNasdaqData(start_code='', end_code='', start_date='', end_date=''):
     quotes = []
     names = []
-    stock_basics = pd.read_csv('NASDAQ_companylist.csv')
-    stock_basics = stock_basics[stock_basics['Sector'] == 'Technology']
-    for index, stock_basic in stock_basics.iterrows():
-        code, name = stock_basic['Symbol'], stock_basic['Symbol']
-        data = get_nasdaq_daily_data_ind(code, '', start_date, end_date, append_ind=False)
+    usa_company = store.get_usa_company(sector='Technology')
+    for index, company in usa_company.iterrows():
+        code, name = company['Symbol'], company['Symbol']
+        data = store.get_usa_daily_data_ind(symbol=code, trade_date='', start_date=start_date, end_date=end_date,
+                                            append_ind=False)
         print len(data), code, name
-        if len(data) != 262:
+        if len(data) != 263:
             continue
         quotes.append(data[['open', 'close']])
-        # quotes.append((data.close - data.open).T.values)
         names.append(name)
 
     close_prices = np.vstack([q['close'].values for q in quotes])
@@ -145,32 +144,6 @@ def loadNasdaqData(start_code='', end_code='', start_date='', end_date=''):
 import MySQLdb as db
 import pandas as pd
 import Indicators as ind
-
-
-def get_nasdaq_daily_data_ind(symbol='', trade_date='', start_date='', end_date='', append_ind=False):
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    df = pd.DataFrame()
-    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM nasdaq_technology_daily where 1=1 "
-    if (len(symbol) > 0) & (not symbol.isspace()):
-        sql += "and symbol = %(symbol)s "
-    if (len(trade_date) > 0) & (not trade_date.isspace()):
-        sql += "and date = %(date)s "
-    if (len(start_date) > 0) & (not start_date.isspace()):
-        sql += "and date >= %(start_date)s "
-    if (len(end_date) > 0) & (not end_date.isspace()):
-        sql += "and date <= %(end_date)s "
-    sql += "order by date asc "
-    print sql
-    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
-                                    'end_date': end_date}, con=con)
-    if append_ind:
-        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
-        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
-        data = data.join(ochl2ind, how='left')
-    df = df.append(data)
-    con.close()
-    return df
-
 
 X, names = loadNasdaqData(start_date='2018-01-01')
 labels, partial_correlations, embedding = fit(X)

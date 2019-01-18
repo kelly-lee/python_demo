@@ -31,8 +31,7 @@ CREATE TABLE `nasdaq_daily` (
   `adj_close` double NOT NULL,
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `symbol` varchar(16) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ix_nasdaq_daily_Date` (`date`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;

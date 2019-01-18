@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 import numpy as np
 import Indicators as ind
 import MySQLdb as db
+import pandas_datareader.data as web
 
 
 # 保存复权因子
@@ -124,24 +125,108 @@ def get_chart_data_from_db(code='', start_date='', end_date='', append_ind=True)
     return data
 
 
-def save_nasdaq_company():
-    nasdaq_company = pd.read_csv('NASDAQ_companylist.csv')
+# 保存美股公司信息
+def save_usa_company():
+    company = pd.DataFrame()
+    nasdaq_company = pd.read_csv('CompanyList_NASDAQ.csv')
+    nasdaq_company['Exchange'] = 'NASDAQ'
+    company = company.append(nasdaq_company)
+    nyse_company = pd.read_csv('CompanyList_NYSE.csv')
+    nyse_company['Exchange'] = 'NYSE'
+    company = company.append(nyse_company)
+    amex_company = pd.read_csv('CompanyList_AMEX.csv')
+    amex_company['Exchange'] = 'AMEX'
+    company = company.append(amex_company)
+    company.drop(['Unnamed: 8', 'Unnamed: 9'], axis=1, inplace=True)
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    nasdaq_company.to_sql('nasdaq_company', engine, if_exists='append')
+    company.to_sql('usa_company', engine, if_exists='append')
 
 
-def get_nasdaq_company():
+# 查询美股公司信息
+# Health Care 卫生保健|Finance 金融|Consumer Services 消费服务|Technology 技术|Miscellaneous 杂|Capital Goods 资本货物
+# Energy 能源|Public Utilities 公共设施|Basic Industries 基础工业|Transportation 运输|Consumer Non-Durables 非耐用消费品|Consumer Durables 耐用消费品
+# NASDAQ纳斯达克,NYSE纽约证券交易所,AMEX美国证券交易所
+def get_usa_company(exchange='', sector='', symbol=''):
+    con = db.connect('localhost', 'root', 'root', 'stock')
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    nasdaq_company = pd.read_sql('nasdaq_company', engine)
-    return nasdaq_company
+    sql = "SELECT * FROM usa_company where 1=1 "
+    if (len(exchange) > 0) & (not exchange.isspace()):
+        sql += "and exchange = %(exchange)s "
+    if (len(sector) > 0) & (not sector.isspace()):
+        sql += "and sector = %(sector)s "
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    sql += "order by id asc, exchange asc,sector asc,symbol asc "
+    print sql
+    company = pd.read_sql(sql, params={'exchange': exchange, 'sector': sector, 'symbol': symbol}, con=con)
+    con.close()
+    return company
 
 
-import pandas_datareader.data as web
+# 查询美股日行情
+def get_usa_daily_data_ind(sector='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    if (len(symbol) != 0) | (not symbol.isspace()):
+        sector = get_usa_company(symbol=symbol)['Sector'].values[0]
+        print sector
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM usa_%s_daily where 1=1 " % sector.lower()
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    if (len(trade_date) > 0) & (not trade_date.isspace()):
+        sql += "and date = %(date)s "
+    if (len(start_date) > 0) & (not start_date.isspace()):
+        sql += "and date >= %(start_date)s "
+    if (len(end_date) > 0) & (not end_date.isspace()):
+        sql += "and date <= %(end_date)s "
+    sql += "order by symbol asc , date asc "
+    print sql
+    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
+                                    'end_date': end_date}, con=con)
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    df = df.append(data)
+    con.close()
+    return df
 
-# save_nasdaq_company()
+
+def save_usa_daily_data_ind(sector='', company_id=0):
+    error_code = []
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    companys = get_usa_company(sector=sector)
+    for index, company in companys.iterrows():
+        id = company['id']
+        if id < company_id:
+            continue
+        symbol = company['Symbol']
+        print company['id'], symbol
+        try:
+            nasdaq_daily = web.DataReader(symbol, start='1/1/2015', data_source='yahoo')
+            nasdaq_daily.index = nasdaq_daily.index.to_period("D")
+            nasdaq_daily['symbol'] = symbol
+            nasdaq_daily.rename(
+                columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume',
+                         'Adj Close': 'adj_close'}, inplace=True)
+            nasdaq_daily.to_sql('usa_finance_daily', engine, if_exists='append')
+        except:
+            print company['id'], symbol, 'load error'
+            error_code.append(company['id'])
+    print error_code
+
+
+if __name__ == '__main__':
+    df = get_usa_company(symbol='ASFI')
+    print df[['Symbol', 'Exchange', 'Sector']]
+    df = get_usa_daily_data_ind(symbol=df['Symbol'].values[0])
+    print df
+    # print df.groupby(['Sector'])['id'].count()
+
+    # df = get_usa_company()
+    # print df.groupby(['Sector'])['id'].count()
 
 # nasdaq_daily = web.DataReader('GOOG', start='1/1/2018', data_source='yahoo')
 # print nasdaq_daily
 #
-#743
-
+# 743
