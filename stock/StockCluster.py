@@ -19,8 +19,8 @@ def fit(X):
     _, labels = cluster.affinity_propagation(edge_model.covariance_)
     # #############################################################################
     # 非线性降维
-    node_position_model = manifold.LocallyLinearEmbedding(n_components=2, eigen_solver='dense',
-                                                          n_neighbors=6)
+    node_position_model = manifold.LocallyLinearEmbedding(n_components=4, eigen_solver='dense',
+                                                          n_neighbors=12)
     embedding = node_position_model.fit_transform(X.T).T
     partial_correlations = edge_model.precision_.copy()
     return labels, partial_correlations, embedding
@@ -122,20 +122,31 @@ def loadData(start_code='', end_code='', start_date='', end_date=''):
 def loadNasdaqData(start_code='', end_code='', start_date='', end_date=''):
     quotes = []
     names = []
-    usa_company = store.get_usa_company(sector='Technology')
+    # usa_company = store.get_usa_company(sector='Technology')
+
+    sql = """
+    select t1.symbol ,t1.adj_close,t1.date as date from usa_core_daily as t1
+    inner join (select symbol ,max(adj_close) as adj_close from usa_core_daily group by symbol  )t2
+    on t1.symbol = t2.symbol and t1.adj_close = t2.adj_close
+    order by date  desc limit 0,480
+    """
+
+    con = db.connect('localhost', 'root', 'root', 'stock', charset='utf8')
+    usa_company = pd.read_sql(sql, con=con)
+
     for index, company in usa_company.iterrows():
-        code, name = company['Symbol'], company['Symbol']
+        code, name = company['symbol'], company['symbol']
         data = store.get_usa_daily_data_ind(symbol=code, trade_date='', start_date=start_date, end_date=end_date,
                                             append_ind=False)
         print len(data), code, name
-        if len(data) != 263:
+        if len(data) != 1018:
             continue
         quotes.append(data[['open', 'close']])
         names.append(name)
 
     close_prices = np.vstack([q['close'].values for q in quotes])
     open_prices = np.vstack([q['open'].values for q in quotes])
-    variation = close_prices - open_prices
+    variation = (close_prices - open_prices) / open_prices
     return variation.copy().T, np.array(names)
 
 
@@ -145,8 +156,25 @@ import MySQLdb as db
 import pandas as pd
 import Indicators as ind
 
-X, names = loadNasdaqData(start_date='2018-01-01')
+X, names = loadNasdaqData(start_date='2015-01-01', end_date='2019-01-17')
 labels, partial_correlations, embedding = fit(X)
 for i in range(labels.max() + 1):
     print('Cluster %i: %s' % ((i + 1), ', '.join(names[labels == i])))
-draw(names, labels, partial_correlations, embedding)
+# draw(names, labels, partial_correlations, embedding)
+
+
+col = 17
+row = 20
+fig = plt.figure(figsize=(16, 8))
+j = 0
+for i in range(labels.max() + 1):
+    for symbol in names[labels == i]:
+        j += 1
+        prices = store.get_usa_daily_data_ind(symbol=symbol)
+        # print prices
+        ax = fig.add_subplot(row, col, j)
+        ax.set_ylabel(symbol)
+        ax.plot(prices['adj_close'])
+        ax.set_xticks([])
+        ax.set_yticks([])
+plt.show()

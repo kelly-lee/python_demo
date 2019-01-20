@@ -1714,7 +1714,7 @@ html = """
 <a href="http://stock.finance.sina.com.cn/usstock/quotes/CBON.html"
 	rel="suggest" title="CBON,VanEck Vectors ChinaAMC China Bond ETF,中国高级债指数ETF">中国高级(CBON)</a>
 	"""
-
+from sqlalchemy import create_engine
 soup = BeautifulSoup(html, features="lxml")
 df = pd.DataFrame()
 a = soup.select("a")
@@ -1727,9 +1727,12 @@ for link in a:
     df = df.append([{'Name_CN': name, 'Symbol': symbol}], ignore_index=True)
 print len(df)
 company = store.get_usa_company()
-company = pd.merge(company, df, how='left', on=['Symbol'])
-print company
-from sqlalchemy import create_engine
+company = pd.merge(company, df, how='outer', on=['Symbol'])
+# print(arr[pd.isnull(arr['numTest'])==True])
+print len(company[pd.isnull(company['Name_CN_y'])==False])
+# print company['level_0']
+
+
 engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-# company.to_sql('usa_company_1', engine, if_exists='append')
-company.to_csv('company.csv', index=False, header=True, encoding='gbk')
+company.to_sql('usa_company_4', engine, if_exists='append')
+# company.to_csv('company.csv', index=False, header=True, encoding='gbk')
