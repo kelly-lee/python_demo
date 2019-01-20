@@ -1,0 +1,519 @@
+symbol,name_cn
+MSFT,微软
+AAPL,苹果
+GOOG,谷歌C
+FB,Facebook
+TCEHY,腾讯控股
+VZ,Verizon
+INTC,英特尔
+CHL,中国移动
+ORCL,甲骨文
+CSCO,思科
+T,AT&T
+TSM,台积电
+NFLX,奈飞
+SAP,SAP SE
+ADBE,Adobe
+IBM,IBM Corp
+CRM,Salesfor
+AVGO,博通
+TXN,德州仪器
+DCM,NTT DOCO
+TMO,赛默飞世
+NVDA,英伟达
+QCOM,高通
+AMT,美国铁塔
+VMW,VMware
+ADP,Automati
+TMUS,T-Mobile
+INTU,财捷
+AMX,美洲移动
+VOD,沃达丰
+YHOO,更名AABA
+NTDOY,任天堂
+INFY,Infosys
+TEF,西班牙电
+CCI,Crown Ca
+CHA,中国电信
+MU,美光科技
+CTSH,高知特
+BCE,加拿大贝
+HPQ,惠普
+ATVI,动视暴雪
+NOK,诺基亚
+WDAY,Workday
+AMAT,应用材料
+ADI,亚德诺
+RHT,红帽
+EQIX,易昆尼克
+ADSK,欧特克
+BT,英国电信
+EA,艺电
+TLK,印尼电信
+TEL,泰科电子
+CHU,中国联通
+GLW,康宁
+ERIC,爱立信
+TWTR,Twitter
+APH,安诺电子
+S,斯普林特
+WIT,Wipro Li
+NXPI,恩智浦
+XLNX,赛灵思
+A,安捷伦科
+LRCX,拉姆研究
+KYO,京都陶艺
+TU,"泰勒斯
+    "
+TEAM,Atlassia
+VRSN,威瑞信
+AMD,AMD
+SBAC,SBA Comm
+LVLT,第三级通
+PANW,Palo Alt
+MSI,摩托罗拉
+CA,冠群电脑
+MCHP,微芯科技
+CERN,塞纳
+ANET,Arista N
+CTL,世纪电信
+CHKP,Check Po
+HRS,哈里斯通
+GIB,CGI Grou
+NTAP,NetApp
+WAT,Waters C
+VEEV,Veeva Sy
+MXIM,美信集成
+CTXS,思杰系统
+KLAC,科磊
+VIV,Telefoni
+SNPS,新思科技
+ANSS,安斯科技
+CDNS,卡得斯设
+STM,意法半导
+GRMN,佳明
+SYMC,赛门铁克
+FTNT,飞塔信息
+SWKS,思佳讯
+CDW,CDW Corp
+SSNC,SS&C科技
+TTWO,Take-Two
+BR,Broadrid
+AKAM,Akamai
+STX,希捷科技
+WDC,西部数据
+CSC,Computer
+JKHY,杰克亨利
+YNDX,Yandex
+DATA,Tableau 
+JNPR,瞻博网络
+FFIV,F5网络
+ZBRA,Zebra Te
+OTEX,Open Tex
+TRMB,天宝导航
+TI,意大利电
+MRVL,迈威尔科
+DOX,Amdocs L
+ULTI,The Ulti
+ASX,日月光半
+MSCC,美高森美
+MBT,移动电信
+FDS,辉盛研究
+TSU,堤姆通信
+DELL,戴尔
+KT,韩国电信
+EPAM,EPAM Sys
+CGNX,康耐视科
+TYL,Tyler Te
+IPGP,IPG光电
+BAH,Booz All
+NICE,NICE系统
+PRAH,PRA Heal
+LPL,LG Displ
+Z,Zillow
+IDTI,集成设备
+NATI,美国国家
+ZAYO,Zayo Gro
+CAVM,卡姆网络
+CIEN,Ciena科
+BIO,Bio Rad
+HUBS,"HubSpot,"
+TER,泰瑞达
+TKC,土耳其移
+LOGI,罗技
+ARRS,艾利斯
+DNB,邓白氏
+BRKR,布鲁克
+NEWR,New Reli
+MPWR,Monolith
+PHI,菲律宾长
+SWI,Solarwin
+TDC,Teradata
+PFPT,Proofpoi
+WIX,Wix.com 
+FSLR,第一太阳
+RP,RealPage
+CREE,克里科技
+DST,DST系统
+MORN,晨星
+CY,赛普拉斯
+UMC,联电
+LOGM,大家来网
+MLNX,迈勒罗斯
+NUAN,Nuance通
+LSI,LSI半导
+PEGA,Pegasyst
+FLEX,伟创力国
+MDSO,Medidata
+ENTG,英特格
+DLB,Dolby La
+AUO,友达光电
+MKSI,MKS Inst
+JBL,捷普科技
+ZNGA,Zynga
+ACXM,艾克希姆
+TDS,电话和数
+SLAB,芯科实验
+VSAT,卫讯公司
+JCOM,J2全球
+TECD,美国技术
+SYNT,"Syntel, "
+BLKB,布莱克波
+SMTC,先科电子
+ACIW,ACI环球
+TI.A,意大利电
+QLYS,科力斯
+MANH,曼哈顿联
+NCR,NCR Corp
+IGT,国际博彩
+USM,United S
+CLGX,CoreLogi
+CVLT,康沃系统
+YELP,Yelp
+ORBK,奥宝科技
+COHR,Coherent
+CCMP,卡伯特微
+AVX,AVX Corp
+NAVI,Navient 
+OMCL,Omnicell
+CYBR,Cyber-Ar
+BOX,Box.net
+FNSR,菲尼萨网
+IDCC,InterDig
+VSH,威世科技
+ENV,Envestne
+CALD,卡利都斯
+KBR,KBR工程
+MRCY,Mercury 
+SHEN,Shenando
+CRUS,凌云半导
+GLOB,Globant 
+VG,Vonage H
+CVG,肯沃基
+CCOI,Cogent C
+TSRA,Tessera 
+IRDM,铱星通讯
+DGI,DigitalG
+EPAY,Bottomli
+IIVI,II‐VI I
+TEO,阿根廷电
+SGMS,美彩科技
+ITRI,伊管
+P,潘多拉媒
+MDRX,麦赛斯医
+NTCT,网侦系统
+BRKS,布鲁克自
+FN,Fabrinet
+CUB,Cubic Co
+EGHT,8x8 Inc
+SATS,回声星通
+ROVI,Macrovis
+POWI,帕沃英蒂
+AEIS,Advanced
+BSFT,BroadSof
+SANM,新美亚电
+AMKR,艾克尔科
+ESE,ESCO科技
+PLXS,普雷克萨
+EBIX,"Ebix, In"
+PRGS,Progress
+DIOD,Diodes I
+SPSC,SPS Comm
+IPHI,Inphi Co
+ARST,ArcSight
+NTL,北方电信
+BV,BrightVi
+CUDA,梭子鱼网
+MANT,美泰科技
+KLIC,库力索法
+KTOS,克瑞拓斯
+PLT,缤特力
+MMI,摩托罗拉
+QSII,Quality 
+OCLR,"Oclaro, "
+VRTU,Virtusa 
+OSIS,OSI Syst
+BCOR,"Blucora,"
+MITL,Mitel Ne
+RAVN,Raven In
+SYNA,Synaptic
+SSTK,Shutters
+ANGI,ANGI Hom
+AVG,AVG科技
+DDD,3D Syste
+WK,Workiva 
+GLUU,Glu移动
+SIMO,慧荣科技
+VICR,Vicor Co
+MXL,MaxLinea
+GNCMA,通用通讯
+ATNI,大西洋电
+PRO,PROS Hol
+NTGR,"NETGEAR,"
+ALTR,艾尔特拉
+CSGS,CSG系统
+IIJI,首创网络
+TIER,TIER REI
+SSYS,Stratasy
+TTMI,TTM科技
+CLS,天弘科技
+ALOG,Analogic
+EFII,电子影像
+RDWR,Radware 
+ESIO,电子科技
+PLUS,正羽科技
+BHE,Benchmar
+FORM,FormFact
+GSAT,全球星
+WIFI,Boingo W
+SCSC,ScanSour
+MEI,Methode 
+LSCC,莱迪思半
+MTLS,Material
+EGOV,NIC Inc.
+CTS,CTS Corp
+XOXO,XO集团
+SMCI,超微电脑
+RMBS,"Rambus, "
+CRAY,克雷科技
+VDSI,VASCO Da
+MTSC,MTS Syst
+PRFT,Perficie
+HSTM,健康流科
+LORL,劳拉空间
+SONS,圣思网络
+IXYS,IXYS Cor
+CNSL,联合通讯
+EXTR,极速网络
+SPWR,SunPower
+INFN,英飞朗
+FARO,法如科技
+CRCM,Care.com
+COHU,科休半导
+NANO,耐诺
+PLAB,福尼克斯
+TYPE,蒙泰图像
+UIS,优利系统
+ORBC,ORBCOMM
+RTEC,Rudolph 
+UPLD,Upland S
+STAR,iStar In
+HIMX,奇景光电
+ACLS,亚舍立科
+WINA,威玛克工
+IMOS,南茂科技
+CMTL,康姆泰克
+CEL,以色列塞
+SPNS,Sapiens 
+CEVA,Ceva
+ADTN,亚川
+FORTY,配方系统
+SWIR,Sierra W
+CALX,"Calix, I"
+NIHD,国家信息
+VSLR,Vivint S
+MOBL,MobileIr
+CAMP,CalAmp C
+ATEN,A10 Netw
+GILT,吉来特卫
+NVEC,NVE Corp
+PKE,Park Ele
+CTV,康普国际
+SSTI,超捷半导
+CBB,辛辛那提
+THOR,Synthorx
+HLIT,谐波
+AMOT,Allied M
+VECO,Veeco In
+WRLS,Pensare 
+MGIC,Magic So
+PAR,PAR Tech
+COOL,Majesco
+LMRK,Landmark
+UCTT,超科林半
+BME,贝莱德健
+RST,如师通
+AUDC,奥科
+AGYS,阿吉赛斯
+TII,墨西哥国
+GOGO,Gogo
+SLP,Simulati
+ZIXI,Zix Corp
+KEYW,KEYW控股
+PT,品钛
+NPTN,NeoPhoto
+LLNW,Limeligh
+DGII,美国迪进
+ATTO,Atento S
+SNCR,Synchron
+GRVY,GRAVITY 
+PDFS,PDF Solu
+AMSWA,美国软件
+CRNT,Ceragon
+IMMR,Immersio
+RNET,"RigNet, "
+LQDT,Liquidit
+SIFY,Sify Tec
+FTR,Frontier
+DSPG,DSP Grou
+BCOV,Brightco
+SPEC,Spectrum
+AMSC,美国超导
+CAMT,康特科技
+SILC,Silicom
+HGRD,医疗职系
+ACTL,爱特
+HURC,赫克
+AOSL,万国半导
+DMRC,数字标识
+ALLT,艾奥特通
+COGT,"Cogint, "
+KVHI,KVH通信
+TRLA,"Telaria,"
+SPA,斯巴顿
+TDA,Telephon
+DWCH,数据观察
+GSIT,广船国际
+IDT,万威
+TRNS,Transcat
+PTI,Proteost
+AXTI,AXT Inc
+CLFD,克利尔菲
+INAP,Internap
+ALOT,AstroNov
+MLNK,麦迪实软
+CYBE,数码光学
+WIN,Windstre
+PANL,Pangaea 
+EMKR,埃姆科
+SMTX,SMTC Cor
+XONE,ExOne
+HBIO,哈佛生物
+IVAC,因特瓦克
+PXLW,美国像素
+IO,离子地球
+DMD,Demand M
+RNWK,RealNetw
+VOXX,奥迪富斯
+RDCM,Radcom L
+IDSY,编号系统
+TST,TheStree
+ALSK,阿拉斯加
+KOPN,高平电子
+FEIM,高频电子
+MXWL,Maxwell
+INVE,单片机微
+SQNS,Sequans 
+NLST,"Netlist,"
+KEQU,基瓦尼科
+PCTI,"PC-Tel, "
+ABTL,Autobyte
+ASUR,Asure So
+NTWK,奈特阳科
+TSQ,Townsqua
+MVIS,维视图像
+PRCP,Perceptr
+QUIK,快辑半导
+INTT,inTest C
+TACT,TransAct
+AWRE,"Aware, I"
+ICAD,icad inc
+NMRX,纳姆热斯
+LTRX,创力
+RFIL,RF Indus
+SYNC,"Synacor,"
+EDGW,厄奇沃特
+RSYS,RadiSys 
+KTCC,Key Tron
+ENTR,熵通科技
+ONVI,恩维亚策
+ASYS,Amtech S
+SEAC,SeaChang
+OPNT,荣群电讯
+QTM,昆腾数据
+SMSI,Smith Mi
+CCUR,CCUR Hol
+SPRT,support.
+MNDO,思维终端
+LPTH,LightPat
+DAIO,Data I/O
+OBAS,阿贝斯
+CSPI,CSP Inc.
+ELON,埃斯朗
+INOD,Innodata
+NVLS,诺发系统
+ISSC,创新软件
+GIGM,和信超媒
+SKYS,天华阳光
+DGLY,Digital 
+OTIV,On Track
+IMN,怡敏信
+IGLD,金线网络
+BSQR,BSQUARE
+OICO,OI
+OESX,Orion En
+ISNS,图像传感
+WSTL,Westell 
+SYPR,Sypris S
+DRAM,达泰莱
+AEHR,Aehr Tes
+CLRO,ClearOne
+STRM,Streamli
+RBCN,卢比肯科
+ARCW,阿尔克科
+JCS,通信系统
+FALC,飞康软件
+IPAS,iPass In
+SXE,Southcro
+BBOX,Black Bo
+CNXT,中创100E
+EVOL,Evolving
+PSID,帕斯提夫
+SGMA,喜玛庆国
+ELSE,伊莱克森
+QBAK,扩斯达
+NSYS,Nortech 
+DRIV,Global X
+SMIT,Schmitt 
+TISA,Top Imag
+PRKR,ParkerVi
+SIGM,西格玛设
+TSRI,TSR软件
+BOSC,BOS科技
+BVSN,宏道资讯
+WPCS,WPCS Int
+CNXR,Connectu
+MOSY,正一科技
+ELTK,Eltek Lt
+SCON,超导技术
+GIGA,千兆微波
+TWER,Towerstr
+SOFO,Sonic Fo
+AERG,Applied 
+UNCA,Unica软
+EFJI,Ef Johns
+SMTL,Semitool
+AGLT,Angel Te
+PTEC,Phoenix 
+DBTK,Double T
+STST,ARGON ST
