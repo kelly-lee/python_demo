@@ -15,7 +15,7 @@ left join usa_company as t2
 on t1.symbol = t2.symbol where t2.symbol is null
 """
 delete_sql = """
-    delete from usa_core_daily where symbol  =  '%s'
+delete from usa_core_daily where symbol  =  '%s'
 """
 stocks = pd.read_sql(sql, con=con)
 print stocks['symbol'].tolist()

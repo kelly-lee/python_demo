@@ -96,6 +96,19 @@ def get_company_by_price_drct(drt):
         return df[df.drt < 0]
 
 
+def get_cor_with_ixic(symbols, start, end):
+    df = pd.DataFrame()
+    nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
+    for symbol in symbols:
+        prices = store.get_usa_daily_data_ind(symbol=symbol, start_date=start, end_date=end)
+        if len(prices) != len(nasdaq):
+            continue
+        cor = np.corrcoef(nasdaq.Close.tolist(), prices.close.tolist())[0, 1]
+        df.at[symbol, 'cor'] = cor
+    df.sort_values(by=['cor'], ascending=False, inplace=True)
+    return df
+
+
 # save_name_cn()
 # cn = pd.read_csv("CompanyList_Xueqiu_Usa_Tech.csv")
 # cn = pd.merge(cn, df, how='outer', on=['symbol'])
@@ -103,14 +116,15 @@ def get_company_by_price_drct(drt):
 # cn.sort_values(by=['roc'], ascending=[0], inplace=True)
 # cn.to_csv('test.csv', index=False, header=True, encoding='utf8')
 
-# df = get_company_by_price_drct(1).iloc[0:120]
-# Charts.drawPanel(12, 10, df['symbol'].tolist())
 
-nasdaq = web.DataReader('^IXIC', start='2015-01-01', end='2018-12-31', data_source='yahoo')
-print nasdaq
+start = '2015-01-02'
+end = '2018-12-31'
+symbols = get_company_by_price_drct(1)['symbol'].tolist()
+df = get_cor_with_ixic(symbols, start, end)
+df = df.iloc[121:216]
+Charts.drawPanel(12, 10, df.index.tolist(), start, end)
 
-
-#cnet
-rp = web.DataReader('CNET', start='2015-01-01', end='2018-12-31', data_source='yahoo')
-print np.corrcoef(nasdaq.Close.tolist(),rp.Close.tolist())
+# cnet
+# rp = web.DataReader('CNET', start='2015-01-01', end='2018-12-31', data_source='yahoo')
+# print np.corrcoef(nasdaq.Close.tolist(), rp.Close.tolist())[0, 1]
 # print nasdaq.corr(rp)
