@@ -133,9 +133,8 @@ def save_usa_company():
 
     nasdaq_company['Exchange'] = 'NASDAQ'
     company = company.append(nasdaq_company)
-    nasdaq_company.drop([ 'Unnamed: 9'], axis=1, inplace=True)
+    nasdaq_company.drop(['Unnamed: 9'], axis=1, inplace=True)
     nasdaq_company.to_sql('usa_company', engine, if_exists='append')
-
 
     nyse_company = pd.read_csv('CompanyList_NYSE.csv')
     nyse_company['Exchange'] = 'NYSE'
@@ -143,12 +142,12 @@ def save_usa_company():
     nyse_company.to_sql('usa_company', engine, if_exists='append')
     company = company.append(nyse_company)
 
-
     amex_company = pd.read_csv('CompanyList_AMEX.csv')
     amex_company['Exchange'] = 'AMEX'
     amex_company.drop(['Unnamed: 8'], axis=1, inplace=True)
     amex_company.to_sql('usa_company', engine, if_exists='append')
     company = company.append(amex_company)
+
 
 # 查询美股公司信息
 # Health Care 卫生保健|Finance 金融|Consumer Services 消费服务|Technology 技术|Miscellaneous 杂|Capital Goods 资本货物
@@ -179,7 +178,7 @@ def get_usa_daily_data_ind(sector='', symbol='', trade_date='', start_date='', e
     #     sector = get_usa_company(symbol=symbol)['Sector'].values[0]
     #     print sector
     # sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM usa_%s_daily where 1=1 " % sector.lower()
-    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM nasdaq_technology_daily where 1=1 "
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM usa_technology_daily where 1=1 "
     if (len(symbol) > 0) & (not symbol.isspace()):
         sql += "and symbol = %(symbol)s "
     if (len(trade_date) > 0) & (not trade_date.isspace()):
@@ -201,7 +200,7 @@ def get_usa_daily_data_ind(sector='', symbol='', trade_date='', start_date='', e
     return df
 
 
-def save_usa_daily_data_ind(sector='', company_id=0):
+def save_usa_daily_data(sector, company_id, symbol, start='1/1/2015'):
     error_code = []
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     companys = get_usa_company(sector=sector)
@@ -225,6 +224,26 @@ def save_usa_daily_data_ind(sector='', company_id=0):
     print error_code
 
 
+def save_usa_daily_data(tabel, symbol, start, end):
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    try:
+        nasdaq_daily = web.DataReader(symbol, start=start, end=end, data_source='yahoo')
+        nasdaq_daily.index = nasdaq_daily.index.to_period("D")
+        nasdaq_daily['symbol'] = symbol
+        nasdaq_daily.rename(
+            columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume',
+                     'Adj Close': 'adj_close'}, inplace=True)
+        nasdaq_daily.to_sql(tabel, engine, if_exists='append')
+    except:
+        print  symbol, 'save error'
+
+
+def query_by_sql(sql):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    return pd.read_sql(sql, con=con)
+
+
+
 if __name__ == '__main__':
     save_usa_company()
     # df = get_usa_company(symbol='ASFI')
@@ -235,5 +254,3 @@ if __name__ == '__main__':
 
     # df = get_usa_company()
     # print df.groupby(['Sector'])['id'].count()
-
-

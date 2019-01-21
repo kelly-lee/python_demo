@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
 import matplotlib.pyplot as plt
-# import TushareStore as store
+import TushareStore as store
 import Indicators as ind
 import mpl_finance as mpf
 import pandas_datareader.data as web
@@ -311,7 +311,7 @@ def drawInd(ind='', ax=None, data=None):
 
 def drawAll(code, data, types=[['K', 'SMA']]):
     row = len(types)
-    fig = plt.figure(figsize=(4,  row))
+    fig = plt.figure(figsize=(4, row))
     plt.title(code)
     i = 0
     for type in types:
@@ -377,6 +377,27 @@ def drawBuy(codes):
 
     plt.legend()
     plt.subplots_adjust(hspace=0.1)
+    plt.show()
+
+
+def drawPanel(row, col, symbols, start, end):
+    nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
+    fig = plt.figure(figsize=(16, 8))
+    i = 0
+    for symbol in symbols:
+        i += 1
+        prices = store.get_usa_daily_data_ind(symbol=symbol, start_date=start, end_date=end)
+        prices.index = prices.date
+        # print prices
+        ax = fig.add_subplot(row, col, i)
+        ax.set_ylabel(symbol)
+        ax.plot(prices['adj_close'])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax = ax.twinx()
+        ax.plot(nasdaq['Adj Close'], color='grey')
+        ax.set_xticks([])
+        ax.set_yticks([])
     plt.show()
 
 # code = 'GOOG'
