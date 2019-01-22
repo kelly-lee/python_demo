@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # from __future__ import print_function
 
-# Author: Gael Varoquaux gael.varoquaux@normalesup.org
-# License: BSD 3 clause
 
 import sys
 import pandas_datareader.data as web
@@ -22,23 +20,16 @@ import sys
 import MySQLdb as db
 
 
-def save_name_cn():
-    html = open('CompanyList_Xueqiu_Usa_Tech.html', 'r').read()
-    soup = BeautifulSoup(html, features="lxml")
-    a = soup.select("td a")
-    df = pd.DataFrame()
-    i = 0
-    for link in a:
-        row = i / 3
-        col = i % 3
-        if i % 3 < 2:
-            df.at[row, col] = link.text
-        i += 1
-    df.rename(columns={0: 'symbol', 1: 'name_cn'}, inplace=True)
-    df.to_csv('CompanyList_Xueqiu_Usa_Tech.csv', index=False, header=True, encoding='utf8')
+# 获得美股列表
+def get_usa_company_list(sector):
+    company_list = pd.read_csv('CompanyList.csv')
+    if (len(sector) > 0) & (not sector.isspace()):
+        company_list = company_list[company_list.sector == sector]
+    return company_list
 
 
-def merge_company():
+# 合并并存储美股列表
+def merge_and_save_usa_company_list():
     company = pd.DataFrame()
     amex = pd.read_csv('CompanyList_AMEX.csv')
     amex.drop(["LastSale", "Summary Quote"], inplace=True, axis=1)
@@ -47,6 +38,7 @@ def merge_company():
                  "Sector": "sector",
                  "Industry": "industry"}, inplace=True)
     amex.drop(amex.columns[- 1], inplace=True, axis=1)
+    amex['exchange'] = 'AMEX'
     nasdaq = pd.read_csv('CompanyList_NASDAQ.csv')
     nasdaq.drop(["LastSale", "Summary Quote", "ADR TSO"], inplace=True, axis=1)
     nasdaq.drop(nasdaq.columns[- 1], inplace=True, axis=1)
@@ -54,6 +46,7 @@ def merge_company():
         columns={"Symbol": "symbol", "Name": "name", "MarketCap": "market_cap", "IPOyear": "ipo_year",
                  "Sector": "sector",
                  "Industry": "industry"}, inplace=True)
+    nasdaq['exchange'] = 'NASDAQ'
     nyse = pd.read_csv('CompanyList_NYSE.csv')
     nyse.drop(["LastSale", "Summary Quote"], inplace=True, axis=1)
     nyse.rename(
@@ -61,10 +54,26 @@ def merge_company():
                  "Sector": "sector",
                  "Industry": "industry"}, inplace=True)
     nyse.drop(nyse.columns[- 1], inplace=True, axis=1)
+    nyse['exchange'] = 'NYSE'
     company = company.append(amex)
     company = company.append(nasdaq)
     company = company.append(nyse)
     company.to_csv('CompanyList.csv', index=False, header=True, encoding='utf-8')
+
+
+# 根据股票代码获得和纳斯达克指数趋势相关性
+def get_cor_with_ixic(symbols, start, end):
+    df = pd.DataFrame()
+    nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
+    for symbol in symbols:
+        prices = store.get_usa_daily_data_ind(symbol=symbol, start_date=start, end_date=end)
+        if len(prices) != len(nasdaq):
+            continue
+        cor = np.corrcoef(nasdaq.Close.tolist(), prices.close.tolist())[0, 1]
+        df.at[symbol, 'cor'] = cor
+    df.sort_values(by=['cor'], ascending=False, inplace=True)
+    df.to_csv('CompanyList_cor.csv', index=False, header=True, encoding='utf-8')
+    return df
 
 
 def get_company_by_price_drct(drt):
@@ -96,35 +105,11 @@ def get_company_by_price_drct(drt):
         return df[df.drt < 0]
 
 
-def get_cor_with_ixic(symbols, start, end):
-    df = pd.DataFrame()
-    nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
-    for symbol in symbols:
-        prices = store.get_usa_daily_data_ind(symbol=symbol, start_date=start, end_date=end)
-        if len(prices) != len(nasdaq):
-            continue
-        cor = np.corrcoef(nasdaq.Close.tolist(), prices.close.tolist())[0, 1]
-        df.at[symbol, 'cor'] = cor
-    df.sort_values(by=['cor'], ascending=False, inplace=True)
-    return df
-
-
-# save_name_cn()
-# cn = pd.read_csv("CompanyList_Xueqiu_Usa_Tech.csv")
-# cn = pd.merge(cn, df, how='outer', on=['symbol'])
-# print len(cn)
-# cn.sort_values(by=['roc'], ascending=[0], inplace=True)
-# cn.to_csv('test.csv', index=False, header=True, encoding='utf8')
-
-
-start = '2015-01-02'
-end = '2018-12-31'
-symbols = get_company_by_price_drct(1)['symbol'].tolist()
-df = get_cor_with_ixic(symbols, start, end)
-df = df.iloc[121:216]
-Charts.drawPanel(12, 10, df.index.tolist(), start, end)
-
-# cnet
-# rp = web.DataReader('CNET', start='2015-01-01', end='2018-12-31', data_source='yahoo')
-# print np.corrcoef(nasdaq.Close.tolist(), rp.Close.tolist())[0, 1]
-# print nasdaq.corr(rp)
+merge_and_save_usa_company_list()
+# start = '2015-01-02'
+# end = '2018-12-31'
+# symbols = get_usa_company_list(sector='Technology')['symbol'].tolist()
+# df = get_cor_with_ixic(symbols, start, end)
+# print df
+# df = df.iloc[0:120]
+# Charts.drawPanel(12, 10, df.index.tolist(), start, end)
