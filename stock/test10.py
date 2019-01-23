@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # from __future__ import print_function
-
+from sqlalchemy import create_engine
 
 import sys
 import pandas_datareader.data as web
@@ -105,7 +105,49 @@ def get_company_by_price_drct(drt):
         return df[df.drt < 0]
 
 
-merge_and_save_usa_company_list()
+# 保存日k线
+def save_usa_daily_data(engine, table, symbol, start, end):
+    nasdaq_daily = web.DataReader(symbol, start=start, end=end, data_source='yahoo')
+    nasdaq_daily.index = nasdaq_daily.index.to_period("D")
+    nasdaq_daily['symbol'] = symbol
+    nasdaq_daily.rename(
+        columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume',
+                 'Adj Close': 'adj_close'}, inplace=True)
+    nasdaq_daily.to_sql(table, engine, if_exists='append')
+
+
+# 批量保存日k线
+def batch_save_usa_daily_data(table, sector, symbols, start, end):
+    if symbols is None:
+        symbols = get_usa_company_list(sector=sector)['symbol'].tolist()
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    error_codes = []
+    i = 0
+    for symbol in symbols:
+        i += 1
+        try:
+            save_usa_daily_data(engine=engine, table=table, symbol=symbol, start=start, end=end)
+            print symbol, 'save'
+        except:
+            print i, symbol, 'save error'
+            error_codes.append(symbol)
+    print error_codes
+
+
+def test_batch_save_usa_daily_data():
+    # batch_save_usa_daily_data(table='usa_public_utilities_daily', sector='Public Utilities', symbols=None,start='2015-01-01',end='2019-01-21')
+    batch_save_usa_daily_data(table='usa_public_utilities_daily', start='2015-01-01', end='2019-01-21', sector=None,
+                              symbols=['ESTRW', 'JSYNR', 'JSYNU', 'JSYNW', 'AMOV', 'CMS^B', 'DUKB', 'EP^C', 'NMK^B',
+                                       'NMK^C', 'NI^B', 'SRE^A'])
+
+
+# batch_save_usa_daily_data(table='usa_technology_daily', sector='Technology', symbols=None,start='2015-01-01', end='2019-01-21')
+# batch_save_usa_daily_data(table='usa_technology_daily', start='2015-01-01', end='2019-01-21', sector=None
+#                           symbols=['AMRHW', 'CREXW', 'FPAYW', 'GFNSL', 'GTYHW', 'MTECW', 'PHUNW', 'EGHT'])
+
+
+test_batch_save_usa_daily_data()
+# merge_and_save_usa_company_list()
 # start = '2015-01-02'
 # end = '2018-12-31'
 # symbols = get_usa_company_list(sector='Technology')['symbol'].tolist()

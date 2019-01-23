@@ -21,7 +21,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Table structure for nasdaq_daily
 -- ----------------------------
 DROP TABLE IF EXISTS `nasdaq_daily`;
-CREATE TABLE `nasdaq_daily` (
+CREATE TABLE `usa_public_utilities_daily` (
   `date` date NOT NULL,
   `high` double NOT NULL,
   `low` double NOT NULL,
@@ -32,6 +32,7 @@ CREATE TABLE `nasdaq_daily` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `symbol` varchar(16) NOT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+
 
 SET FOREIGN_KEY_CHECKS = 1;
