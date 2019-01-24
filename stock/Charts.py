@@ -4,7 +4,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
 import matplotlib.pyplot as plt
-import TushareStore as store
+import UsaStore as store
 import Indicators as ind
 import mpl_finance as mpf
 import pandas_datareader.data as web
@@ -353,6 +353,8 @@ def drawBuy(codes):
         # buy = close[(wr <= -93) & (wr > -98)]
         # ax.scatter(buy.index, buy, c='orange')
         # buy = close[(wr <= -88) & (wr > -93)]
+
+
         # ax.scatter(buy.index, buy, c='yellow')
         # buy = close[(wr <= -83) & (wr > -88)]
         # ax.scatter(buy.index, buy, c='green')
@@ -380,13 +382,13 @@ def drawBuy(codes):
     plt.show()
 
 
-def drawPanel(row, col, symbols, start, end):
+def drawPanel(row, col, table, symbols, start, end):
     nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
     fig = plt.figure(figsize=(16, 8))
     i = 0
     for symbol in symbols:
         i += 1
-        prices = store.get_usa_daily_data_ind(symbol=symbol, start_date=start, end_date=end)
+        prices = store.get_usa_daily_data_ind(table=table, symbol=symbol, start_date=start, end_date=end)
         prices.index = prices.date
         # print prices
         ax = fig.add_subplot(row, col, i)
@@ -419,3 +421,5 @@ def drawPanel(row, col, symbols, start, end):
 # print codes
 #
 # drawBuy(codes)
+
+

@@ -38,15 +38,18 @@ def save_xuqiu_socket_list():
     df.to_csv('CompanyList_Xuqiu_CN.csv', header=True, index=False, encoding='utf-8')
 
 
-list_cn = pd.read_csv('CompanyList_CN.csv')
-list = pd.read_csv('CompanyList.csv')
-print list
-list = list[list["sector"].notnull()]
-print len(list)
+# list_cn = pd.read_csv('CompanyList_CN.csv')
+# list = pd.read_csv('CompanyList.csv')
+# print list
+# list = list[list["sector"].notnull()]
+# print len(list)
+#
+# list_merge = pd.merge(list_cn, list, how='inner', on=['symbol'])
+# list_merge.to_csv('CompanyList_All.csv', header=True, index=False, encoding='utf-8')
 
-list_merge = pd.merge(list_cn, list, how='inner', on=['symbol'])
-list_merge.to_csv('CompanyList_All.csv', header=True, index=False, encoding='utf-8')
+# company_list = pd.read_csv('CompanyList.csv')
+# print company_list.groupby(['sector']).count()
 
+import UsaStore as store
 
-
-
+store.test_batch_save_usa_daily_data()

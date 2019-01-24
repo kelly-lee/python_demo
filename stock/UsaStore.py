@@ -15,14 +15,16 @@ from bs4 import BeautifulSoup
 import urllib2
 from bs4 import UnicodeDammit
 import re
-import TushareStore as store
 import sys
 import MySQLdb as db
+import Indicators as ind
 
 
 # 获得美股列表
-def get_usa_company_list(sector):
+def get_usa_company_list(exchange, sector):
     company_list = pd.read_csv('CompanyList.csv')
+    if (len(exchange) > 0) & (not exchange.isspace()):
+        company_list = company_list[company_list.exchange == exchange]
     if (len(sector) > 0) & (not sector.isspace()):
         company_list = company_list[company_list.sector == sector]
     return company_list
@@ -62,15 +64,17 @@ def merge_and_save_usa_company_list():
 
 
 # 根据股票代码获得和纳斯达克指数趋势相关性
-def get_cor_with_ixic(symbols, start, end):
+def get_cor_with_ixic(table, symbols, start, end):
     df = pd.DataFrame()
     nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
+    nasdaq = nasdaq.iloc[1:]
     for symbol in symbols:
-        prices = store.get_usa_daily_data_ind(symbol=symbol, start_date=start, end_date=end)
+        prices = get_usa_daily_data_ind(table, symbol=symbol, start_date=start, end_date=end)
         if len(prices) != len(nasdaq):
             continue
         cor = np.corrcoef(nasdaq.Close.tolist(), prices.close.tolist())[0, 1]
         df.at[symbol, 'cor'] = cor
+        df.at[symbol, 'symbol'] = symbol
     df.sort_values(by=['cor'], ascending=False, inplace=True)
     df.to_csv('CompanyList_cor.csv', index=False, header=True, encoding='utf-8')
     return df
@@ -119,7 +123,7 @@ def save_usa_daily_data(engine, table, symbol, start, end):
 # 批量保存日k线
 def batch_save_usa_daily_data(table, sector, symbols, start, end):
     if symbols is None:
-        symbols = get_usa_company_list(sector=sector)['symbol'].tolist()
+        symbols = get_usa_company_list(exchange='', sector=sector)['symbol'].tolist()
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     error_codes = []
     i = 0
@@ -127,31 +131,76 @@ def batch_save_usa_daily_data(table, sector, symbols, start, end):
         i += 1
         try:
             save_usa_daily_data(engine=engine, table=table, symbol=symbol, start=start, end=end)
-            print symbol, 'save'
+            print i, symbol, 'save'
         except:
             print i, symbol, 'save error'
             error_codes.append(symbol)
     print error_codes
 
 
+# 查询美股日行情
+def get_usa_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM " + table + " where 1=1 "
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    if (len(trade_date) > 0) & (not trade_date.isspace()):
+        sql += "and date = %(date)s "
+    if (len(start_date) > 0) & (not start_date.isspace()):
+        sql += "and date >= %(start_date)s "
+    if (len(end_date) > 0) & (not end_date.isspace()):
+        sql += "and date <= %(end_date)s "
+    sql += "order by symbol asc , date asc "
+    print sql
+    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
+                                    'end_date': end_date}, con=con)
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    df = df.append(data)
+    con.close()
+    return df
+
+
 def test_batch_save_usa_daily_data():
-    # batch_save_usa_daily_data(table='usa_public_utilities_daily', sector='Public Utilities', symbols=None,start='2015-01-01',end='2019-01-21')
-    batch_save_usa_daily_data(table='usa_public_utilities_daily', start='2015-01-01', end='2019-01-21', sector=None,
-                              symbols=['ESTRW', 'JSYNR', 'JSYNU', 'JSYNW', 'AMOV', 'CMS^B', 'DUKB', 'EP^C', 'NMK^B',
-                                       'NMK^C', 'NI^B', 'SRE^A'])
+    start = '2015-01-01'
+    end = '2019-01-21'
+
+    # batch_save_usa_daily_data(table='usa_consumer_durables_daily', sector='Consumer Durables', symbols=None,
+    #                           start=start, end=end)
+    batch_save_usa_daily_data(table='usa_consumer_durables_daily', sector=None,
+                              start=start, end=end,
+                              symbols=['BLNKW', 'CMSSR', 'CMSSU', 'CMSSW', 'JASNW', 'NXEOW', 'SGLBW'])
+    # batch_save_usa_daily_data(table='usa_transportation_daily', sector='Transportation', symbols=None, start=start,
+    #                           end=end)
+    # batch_save_usa_daily_data(table='usa_transportation_daily', start=start, end=end,
+    #                           symbols=['CYRXW', 'HUNTU', 'HUNTW', 'SHIPW', 'KSU^', 'SBBC'])
+
+    # batch_save_usa_daily_data(table='usa_miscellaneous_daily', sector='Miscellaneous', symbols=None,start=start,end=end)
+    # batch_save_usa_daily_data(table='usa_miscellaneous_daily', start=start, end=end, sector=None,
+    #                           symbols=['PRTHW'])
+    # batch_save_usa_daily_data(table='usa_public_utilities_daily', sector='Public Utilities', symbols=None,start='start,end=end)
+    # batch_save_usa_daily_data(table='usa_public_utilities_daily', start=start, end='2019-01-21', sector=None,
+    #                           symbols=['ESTRW', 'JSYNR', 'JSYNU', 'JSYNW', 'AMOV', 'CMS^B', 'DUKB', 'EP^C', 'NMK^B',
+    #                                    'NMK^C', 'NI^B', 'SRE^A'])
+    # batch_save_usa_daily_data(table='usa_technology_daily', sector='Technology', symbols=None,start=start, end=end)
+    # batch_save_usa_daily_data(table='usa_technology_daily', start=start, end=end, sector=None,
+    #                           symbols=['AMRHW', 'CREXW', 'FPAYW', 'GFNSL', 'GTYHW', 'MTECW', 'PHUNW', 'EGHT'])
 
 
-# batch_save_usa_daily_data(table='usa_technology_daily', sector='Technology', symbols=None,start='2015-01-01', end='2019-01-21')
-# batch_save_usa_daily_data(table='usa_technology_daily', start='2015-01-01', end='2019-01-21', sector=None
-#                           symbols=['AMRHW', 'CREXW', 'FPAYW', 'GFNSL', 'GTYHW', 'MTECW', 'PHUNW', 'EGHT'])
-
-
-test_batch_save_usa_daily_data()
-# merge_and_save_usa_company_list()
-# start = '2015-01-02'
-# end = '2018-12-31'
-# symbols = get_usa_company_list(sector='Technology')['symbol'].tolist()
-# df = get_cor_with_ixic(symbols, start, end)
-# print df
-# df = df.iloc[0:120]
-# Charts.drawPanel(12, 10, df.index.tolist(), start, end)
+if __name__ == '__main__':
+    # test_batch_save_usa_daily_data()
+    start = '2015-01-01'
+    end = '2019-01-21'
+    table = 'usa_public_utilities_daily'
+    sector = 'Public Utilities'
+    symbols = get_usa_company_list(exchange='', sector=sector)['symbol'].tolist()
+    df = get_cor_with_ixic(table, symbols, start, end)
+    cn = pd.read_csv('CompanyList_CN.csv')
+    df_cn = pd.merge(df, cn, how='inner', on=['symbol'])
+    df_cn.to_csv('CompanyList_Public_Utilities_Cor.csv', index=False, header=True, encoding='utf-8')
+    print df_cn[['symbol', 'name', 'cor']]
+    df = df.iloc[0: 120]
+    Charts.drawPanel(12, 10, table, df.index.tolist(), start, end)
