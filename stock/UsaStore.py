@@ -60,16 +60,28 @@ def merge_and_save_usa_company_list():
     company = company.append(amex)
     company = company.append(nasdaq)
     company = company.append(nyse)
+    company.apply(lambda x: str(x).isspace())
+    company['sector'].replace(
+        ['Capital Goods', 'Health Care', 'Energy', 'Technology', 'Basic Industries', 'Finance', 'Consumer Services',
+         'Public Utilities', 'Miscellaneous', 'Consumer Durables', 'Transportation', 'Consumer Non-Durables'],
+        ['capital_goods', 'health_care', 'energy', 'technology', 'basic_industries', 'finance', 'consumer_services',
+         'public_utilities', 'miscellaneous', 'consumer_durables', 'transportation', 'consumer_non_durables'],
+        inplace=True)
     company.to_csv('CompanyList.csv', index=False, header=True, encoding='utf-8')
 
 
 # 根据股票代码获得和纳斯达克指数趋势相关性
-def get_cor_with_ixic(table, symbols, start, end):
+def get_cor_with_ixic(sector, symbols, start, end):
     df = pd.DataFrame()
     nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
+    nasdaq['date'] = nasdaq.index.to_period("D")
     nasdaq = nasdaq.iloc[1:]
     for symbol in symbols:
-        prices = get_usa_daily_data_ind(table, symbol=symbol, start_date=start, end_date=end)
+        prices = get_usa_daily_data_ind(sector, symbol=symbol, start_date=start, end_date=end)
+        # nasdaq_match = pd.merge(prices.date.to_frame(), nasdaq, how='left', on=['date'])
+        # print nasdaq.dtypes, prices.dtypes
+        # print nasdaq_match
+        # print len(prices), len(nasdaq_match)
         if len(prices) != len(nasdaq):
             continue
         cor = np.corrcoef(nasdaq.Close.tolist(), prices.close.tolist())[0, 1]
@@ -117,11 +129,11 @@ def save_usa_daily_data(engine, table, symbol, start, end):
     nasdaq_daily.rename(
         columns={'Open': 'open', 'Close': 'close', 'High': 'high', 'Low': 'low', 'Volume': 'volume',
                  'Adj Close': 'adj_close'}, inplace=True)
-    nasdaq_daily.to_sql(table, engine, if_exists='append')
+    nasdaq_daily.to_sql('usa_' + table + '_daily', engine, if_exists='append')
 
 
 # 批量保存日k线
-def batch_save_usa_daily_data(table, sector, symbols, start, end):
+def batch_save_usa_daily_data(sector, symbols, start, end):
     if symbols is None:
         symbols = get_usa_company_list(exchange='', sector=sector)['symbol'].tolist()
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
@@ -130,7 +142,7 @@ def batch_save_usa_daily_data(table, sector, symbols, start, end):
     for symbol in symbols:
         i += 1
         try:
-            save_usa_daily_data(engine=engine, table=table, symbol=symbol, start=start, end=end)
+            save_usa_daily_data(engine=engine, table=sector, symbol=symbol, start=start, end=end)
             print i, symbol, 'save'
         except:
             print i, symbol, 'save error'
@@ -139,10 +151,10 @@ def batch_save_usa_daily_data(table, sector, symbols, start, end):
 
 
 # 查询美股日行情
-def get_usa_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+def get_usa_daily_data_ind(sector='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
     con = db.connect('localhost', 'root', 'root', 'stock')
     df = pd.DataFrame()
-    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM " + table + " where 1=1 "
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM usa_" + sector + "_daily where 1=1 "
     if (len(symbol) > 0) & (not symbol.isspace()):
         sql += "and symbol = %(symbol)s "
     if (len(trade_date) > 0) & (not trade_date.isspace()):
@@ -164,43 +176,110 @@ def get_usa_daily_data_ind(table='', symbol='', trade_date='', start_date='', en
     return df
 
 
+'capital_goods', 'health_care', 'energy', 'technology', 'basic_industries', 'finance', 'consumer_services',
+'public_utilities', 'miscellaneous', 'consumer_durables', 'transportation'
+
+
 def test_batch_save_usa_daily_data():
-    start = '2015-01-01'
-    end = '2019-01-21'
+    start = '2019-01-21'
+    end = '2019-01-31'
 
-    # batch_save_usa_daily_data(table='usa_consumer_durables_daily', sector='Consumer Durables', symbols=None,
+    # Finance 金融 1054
+    # batch_save_usa_daily_data(sector='finance', symbols=None, start=start, end=end)
+    # batch_save_usa_daily_data(sector='finance', symbols=['LTSK', 'AGFSW', 'ALACW', 'ALGRW', 'AMBCW', 'AMCIW', 'ARYAW', 'BRPAW', 'BRACR', 'BRACU', 'BRACW', 'BWMCW', 'CTACW',
+    #  'BBCPW', 'DDMXW', 'DFBHW', 'EDTXW', 'FTACW', 'FMCIW', 'GPAQW', 'GRSHW', 'GLACW', 'HYACU', 'HYACW', 'HCCHW',
+    #  'IEAWW', 'KBLMU', 'KBLMW', 'LACQW', 'LFACW', 'LMFAW', 'LOACW', 'MMDMW', 'MUDSW', 'NHLDW', 'NEBUW', 'OPESW',
+    #  'OXBRW', 'WRLSW', 'PACQW', 'SCACW', 'SAMAW', 'STNLW', 'TZACW', 'TCBIW', 'TBRGW', 'TIBRW', 'TKKSW', 'TOTAW',
+    #  'TDACW', 'TMCXW', 'TWLVW', 'VEACU', 'VEACW', 'VTIQW', 'ZIONW', 'BAC^W', 'BAC^Y', 'COF^C', 'CIT', 'C^K', 'C^N',
+    #  'JPM^A', 'JPM^H', 'OFG^A', 'STL^A', 'SF^A', 'USB^A'], start=start, end=end)
+
+    # Health Care 卫生保健 882
+    # batch_save_usa_daily_data(sector='health_care', symbols=None, start=start, end=end)
+    batch_save_usa_daily_data(sector='health_care',
+                              symbols=['ABEOW', 'BNTCW', 'BVXVW', 'BCACU', 'BCACW', 'CLRBW', 'CLRBZ', 'CHEKW', 'CTXRW',
+                                       'CNACW', 'CYTXZ', 'DRIOW', 'NDRAW', 'ENTXW', 'EYEGW', 'HJLIW', 'KANG', 'IMRNW',
+                                       'KTOVW', 'MDGSW', 'MTFBW', 'NUROW', 'ONTXW', 'OPGNW', 'PAVMW', 'PAVMZ', 'PHIOW',
+                                       'EYESW', 'SRTSW', 'SNGXW', 'VKTXW']
+                              , start=start, end=end)
+
+    # 能源 300
+    # batch_save_usa_daily_data(sector='energy', symbols=None,
     #                           start=start, end=end)
-    batch_save_usa_daily_data(table='usa_consumer_durables_daily', sector=None,
-                              start=start, end=end,
-                              symbols=['BLNKW', 'CMSSR', 'CMSSU', 'CMSSW', 'JASNW', 'NXEOW', 'SGLBW'])
-    # batch_save_usa_daily_data(table='usa_transportation_daily', sector='Transportation', symbols=None, start=start,
-    #                           end=end)
-    # batch_save_usa_daily_data(table='usa_transportation_daily', start=start, end=end,
-    #                           symbols=['CYRXW', 'HUNTU', 'HUNTW', 'SHIPW', 'KSU^', 'SBBC'])
+    # batch_save_usa_daily_data(sector='energy',
+    #                           symbols=['AMRWW', 'FLMNW', 'NESRW', 'ROSEW', 'USWSW', 'ZNWAA', 'CPE^A', 'REN']
+    #                           , start=start, end=end)
 
-    # batch_save_usa_daily_data(table='usa_miscellaneous_daily', sector='Miscellaneous', symbols=None,start=start,end=end)
-    # batch_save_usa_daily_data(table='usa_miscellaneous_daily', start=start, end=end, sector=None,
-    #                           symbols=['PRTHW'])
-    # batch_save_usa_daily_data(table='usa_public_utilities_daily', sector='Public Utilities', symbols=None,start='start,end=end)
-    # batch_save_usa_daily_data(table='usa_public_utilities_daily', start=start, end='2019-01-21', sector=None,
+    # 资本货物 377
+    # batch_save_usa_daily_data(sector='capital_goods', symbols=None,
+    #                           start=start, end=end)
+    # batch_save_usa_daily_data(sector='capital_goods',
+    #                           symbols=['BNGOW', 'CETXW', 'CLIRW', 'SOLOW', 'TBLTW', 'NAV^D']
+    #                           , start=start, end=end)
+    # 非耐用消费品 236
+    # batch_save_usa_daily_data(sector='consumer_non_durables', symbols=None,
+    #                           start=start, end=end)
+    # batch_save_usa_daily_data(sector='consumer_non_durables',
+    #                           symbols=['TWNKW', 'MKC.V']
+    #                           , start=start, end=end)
+    # 消费服务 822
+    # batch_save_usa_daily_data(sector='consumer_services', symbols=None,
+    #                           start=start, end=end)
+    # batch_save_usa_daily_data(sector='consumer_services',
+    #                           symbols=['APDNW', 'DSKEW', 'TACOW', 'DLPNW', 'LINDW', 'NXTDW', 'EAGLW',
+    #                                    'RBZAW', 'SNHNL', 'WINRW', 'WHLRW', 'PSA^B',
+    #                                    'PSA^C', 'PSA^D', 'PSA^E', 'PSA^F', 'PSA^U', 'PSA^V', 'TY^']
+    #                           , start=start, end=end)
+    # 基础工业 316
+    # batch_save_usa_daily_data(sector='basic_industries', symbols=None,
+    #                           start=start, end=end)
+    # batch_save_usa_daily_data(sector='basic_industries', symbols=['SAND', 'ATISW', 'DD^A', 'DD^B', 'HL^B', 'LEN.B'],
+    #                           start=start, end=end)
+    # 耐用消费品 153
+    # batch_save_usa_daily_data(sector='consumer_durables', symbols=None,
+    #                           start=start, end=end)
+    # batch_save_usa_daily_data(sector='consumer_durables',
+    #                           start=start, end=end,
+    #                           symbols=['BLNKW', 'CMSSR', 'CMSSU', 'CMSSW', 'JASNW', 'NXEOW', 'RVLT', 'SGLBW'])
+    # 运输 124
+    # batch_save_usa_daily_data(sector='transportation', symbols=None, start=start,
+    #                           end=end)
+    # batch_save_usa_daily_data(sector='transportation', start=start, end=end,
+    #                           symbols=['CYRXW', 'HUNTU', 'HUNTW', 'SHIPW', 'KSU^', 'SBBC'])
+    # 杂 154
+    # batch_save_usa_daily_data(sector='miscellaneous', symbols=None, start=start,
+    #                           end=end)
+    # batch_save_usa_daily_data(start=start, end=end, sector='miscellaneous',
+    #                           symbols=['PRTHW','SPB'])
+    # 公共设施 270
+    # batch_save_usa_daily_data(sector='public_utilities', symbols=None,start='start,end=end)
+    # batch_save_usa_daily_data(start=start, end='2019-01-21', sector='public_utilities',
     #                           symbols=['ESTRW', 'JSYNR', 'JSYNU', 'JSYNW', 'AMOV', 'CMS^B', 'DUKB', 'EP^C', 'NMK^B',
     #                                    'NMK^C', 'NI^B', 'SRE^A'])
-    # batch_save_usa_daily_data(table='usa_technology_daily', sector='Technology', symbols=None,start=start, end=end)
-    # batch_save_usa_daily_data(table='usa_technology_daily', start=start, end=end, sector=None,
+    # 科技 624
+    # batch_save_usa_daily_data(sector='technology', symbols=None,start=start, end=end)
+    # batch_save_usa_daily_data( start=start, end=end, sector='technology',
     #                           symbols=['AMRHW', 'CREXW', 'FPAYW', 'GFNSL', 'GTYHW', 'MTECW', 'PHUNW', 'EGHT'])
 
 
-if __name__ == '__main__':
-    # test_batch_save_usa_daily_data()
-    start = '2015-01-01'
-    end = '2019-01-21'
-    table = 'usa_public_utilities_daily'
-    sector = 'Public Utilities'
+# Health Care 卫生保健 882|Finance 金融 1054|
+
+
+def draw_cor(sector, start, end):
     symbols = get_usa_company_list(exchange='', sector=sector)['symbol'].tolist()
-    df = get_cor_with_ixic(table, symbols, start, end)
+    df = get_cor_with_ixic(sector, symbols, start, end)
     cn = pd.read_csv('CompanyList_CN.csv')
     df_cn = pd.merge(df, cn, how='inner', on=['symbol'])
-    df_cn.to_csv('CompanyList_Public_Utilities_Cor.csv', index=False, header=True, encoding='utf-8')
-    print df_cn[['symbol', 'name', 'cor']]
+    df_cn.to_csv('CompanyList_' + sector + '_Cor.csv', index=False, header=True, encoding='utf-8')
     df = df.iloc[0: 120]
-    Charts.drawPanel(12, 10, table, df.index.tolist(), start, end)
+    Charts.drawPanel(12, 10, sector, df.index.tolist(), start, end)
+
+
+if __name__ == '__main__':
+    # df = get_usa_company_list(sector='finance', exchange='')
+    # print df
+    # df = df.groupby('sector').count()
+    # print df
+    test_batch_save_usa_daily_data()
+
+    # merge_and_save_usa_company_list()
+    # draw_cor('technology', '2015-01-01', '2019-01-21')

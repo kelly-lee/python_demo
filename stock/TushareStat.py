@@ -5,44 +5,63 @@ import pandas as pd
 import stock.Indicators as ind
 import matplotlib.pyplot as plt
 import numpy as np
-import TushareStore as ts
-
-# pdi 16 | 5.8 | 0~10~12~16~20~24~50
-# pdi  24|8|1,18.5,23.7,29,99
-
-# slow_j 7.4|17.3| -63.5~-3~6.5~17~97.5
-# slow_j 77|25|-17|59|80|95|158
-
-# willr -88|11 |-100~-97~-92~-83.5~-20
-# willr  -32|23|-98,-52,-25,-11,-0
+import UsaStore as store
+import scipy.stats as st
 
 
-# roc  -9.2 | 7.7 | -70~-12~-7.5~-4~0
-# cci -109 | 41 | -231~-138~-110~-83~50
-# cci 57|69|-124,-4,68,112,226
+def normfun(x):
+    mean = x.mean()
+    sigma = x.std()
+    pdf = np.exp(-((x - mean) ** 2) / (2 * sigma ** 2)) / (sigma * np.sqrt(2 * np.pi))
+    return pdf
 
 
-df = ts.get_daily_data('300', size=0, start_date='20180101', end_date='20190131')
+def drawOne(data, ax):
+    # ax.scatter(ind_min, np.full((ind_min.count()), ind_min.index), label=inds[i], s=0.1, c='r', alpha=0.5)
+    # ax.title = inds[i]
+    print data.describe()
+    mean = data.mean()
+    quantiles = data.quantile(q=[0.25, 0.5, 0.75])
+    x = data.sort_values().values
+    y = st.norm.pdf(x, x.mean(), x.std())
+    ax.axvline(x=mean, color='grey', linestyle="--", linewidth=1)
+    for quantile in quantiles:
+        ax.axvline(x=quantile, color='grey', linestyle="--", linewidth=1)
+    ax.hist(x, bins=50, alpha=0.4)
+    ax.plot(x, y)
+    ax.set_xticks(quantiles)
+    ax.tick_params(axis='x', rotation=60)
+    ax.legend(fontsize=9, ncol=3)
 
-# print df[(df['trade_date'] == '20190111') & (df['pdi'] < 16)]
 
-# inds = ['roc', 'pdi', 'slow_j', 'willr', 'cci']
-inds = ['vol_roc', 'macd_hist', 'mfi', 'aroon_up', 'trix']
+inds = ['bias', 'pdi', 'slow_j', 'willr', 'cci', 'mdi', 'adx', 'adxr', 'vol_roc', 'macd_hist']
+# inds = ['vol_roc', 'macd_hist', 'mfi', 'aroon_up', 'trix']
+
+sector = 'public_utilities'
+start_date = '2018-01-01'
+end_date = '2019-01-21'
+usa_company_list = store.get_usa_company_list(exchange='', sector=sector)
+
+df = pd.DataFrame()
+for symbol in usa_company_list['symbol'].tolist():
+    data = store.get_usa_daily_data_ind(sector=sector, symbol=symbol, start_date=start_date, end_date=end_date,
+                                        append_ind=True)
+    df = df.append(data)
+df.dropna(inplace=True)
 size = len(inds)
 fig = plt.figure(figsize=(12, 6))
 
 for i in range(size):
-    ind_min = df[(df['close'] == df['min'])][inds[i]]
-    print ind_min.describe()
-    ax = fig.add_subplot(2, 5, i + 1)
-    ax.scatter(ind_min, np.full((ind_min.count()), ind_min.index), label=inds[i], s=0.1, c='r', alpha=0.5)
-    # ax.title = inds[i]
+    ind_min = df[(df['close'] == df['min_20'])][inds[i]]
+    ax = fig.add_subplot(2, 10, i + 1)
+    drawOne(ind_min, ax)
+
 for i in range(size):
-    ind_max = df[(df['close'] == df['max'])][inds[i]]
-    print ind_max.describe()
-    ax = fig.add_subplot(2, 5, i + 6)
-    ax.scatter(ind_max, np.full((ind_max.count()), ind_max.index), label=inds[i], s=0.1, c='g', alpha=0.5)
-    # ax.title = inds[i]
+    ind_max = df[(df['close'] == df['max_20'])][inds[i]]
+    ax = fig.add_subplot(2, 10, i + 11)
+    drawOne(ind_max, ax)
+
+plt.setp(plt.gca().get_xticklabels(), rotation=60)
 plt.legend()
-plt.subplots_adjust(hspace=0.1)
+plt.subplots_adjust(hspace=0.5)
 plt.show()

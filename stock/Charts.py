@@ -335,15 +335,14 @@ def drawAll(code, data, types=[['K', 'SMA']]):
     plt.show()
 
 
-def drawBuy(codes):
-    col = 4
-    matrix = np.reshape(codes, (-1, col))
-    row = len(matrix)
-    fig = plt.figure(figsize=(4 * col, 2 * row))
+def drawBuy(row, col, sector, symbols, start, end):
+    fig = plt.figure(figsize=(16, 8))
     i = 0
-    for code in codes:
+    for symbol in symbols:
         i += 1
-        data = store.get_chart_data_from_db("600%d.SH" % code, '20180101')
+        data = store.get_usa_daily_data_ind(sector=sector, symbol=symbol, start_date=start,
+                                            end_date=end, append_ind=True)
+        # data = store.get_chart_data_from_db("600%d.SH" % code, '20180101')
         # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
         close, pdi, wr, wr_89, bias = data['close'], data['pdi'], data['willr'], data['willr_89'], data['bias']
         ax = fig.add_subplot(row, col, i)
@@ -353,7 +352,6 @@ def drawBuy(codes):
         # buy = close[(wr <= -93) & (wr > -98)]
         # ax.scatter(buy.index, buy, c='orange')
         # buy = close[(wr <= -88) & (wr > -93)]
-
 
         # ax.scatter(buy.index, buy, c='yellow')
         # buy = close[(wr <= -83) & (wr > -88)]
@@ -370,25 +368,29 @@ def drawBuy(codes):
 
         # buy = close[ind.UP_CROSS(wr_89, -83.5) & ind.LESS_THAN(wr, -50)]
         # buy = close[ind.LESS_THAN(wr_89, -97)  & ind.BOTTOM(wr_89)]
-        buy = close[ind.LESS_THAN(bias, -12) & ind.BOTTOM(bias) & ind.LESS_THAN(wr_89, -83.5)]
+        # buy = close[ind.LESS_THAN(bias, -12) & ind.BOTTOM(bias) & ind.LESS_THAN(wr_89, -83.5)]
+        buy = close[ind.LESS_THAN(bias.shift(1), -13) & ind.BOTTOM(bias)]
         ax.scatter(buy.index, buy, s=20, c='green')
         # ax = plt.twinx()
         # ax.plot(bias)
         # ax.plot(wr)
         # drawHline(ax, [-12])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_ylabel(symbol)
 
     plt.legend()
     plt.subplots_adjust(hspace=0.1)
     plt.show()
 
 
-def drawPanel(row, col, table, symbols, start, end):
+def drawPanel(row, col, sector, symbols, start, end):
     nasdaq = web.DataReader('^IXIC', start=start, end=end, data_source='yahoo')
     fig = plt.figure(figsize=(16, 8))
     i = 0
     for symbol in symbols:
         i += 1
-        prices = store.get_usa_daily_data_ind(table=table, symbol=symbol, start_date=start, end_date=end)
+        prices = store.get_usa_daily_data_ind(sector=sector, symbol=symbol, start_date=start, end_date=end)
         prices.index = prices.date
         # print prices
         ax = fig.add_subplot(row, col, i)
@@ -401,6 +403,7 @@ def drawPanel(row, col, table, symbols, start, end):
         ax.set_xticks([])
         ax.set_yticks([])
     plt.show()
+
 
 # code = 'GOOG'
 # data = store.get_chart_data_from_db(code, '20180101')
@@ -420,6 +423,9 @@ def drawPanel(row, col, table, symbols, start, end):
 # codes = np.random.randint(100, 700, [12])
 # print codes
 #
-# drawBuy(codes)
 
-
+if __name__ == '__main__':
+    df = pd.read_csv('CompanyList_technology_Cor.csv')
+    print df
+    df = df.iloc[0:120]
+    drawBuy(12, 10, 'technology', df.symbol.tolist(), '2018-10-01', '2019-01-21')

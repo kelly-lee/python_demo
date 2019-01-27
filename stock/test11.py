@@ -52,4 +52,9 @@ def save_xuqiu_socket_list():
 
 import UsaStore as store
 
-store.test_batch_save_usa_daily_data()
+import scipy.stats as st
+
+print st.norm.cdf(0)
+print st.norm.pdf(0.5,3,1)
+
+# store.test_batch_save_usa_daily_data()

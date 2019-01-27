@@ -183,7 +183,7 @@ CREATE TABLE `usa_technology_daily` (
   `symbol` varchar(16) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
-SET FOREIGN_KEY_CHECKS = 1;
+
 
 
 DROP TABLE IF EXISTS `usa_transportation_daily`;
