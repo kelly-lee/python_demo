@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
 import pandas_datareader.data as web
@@ -17,6 +18,7 @@ import plotly.graph_objs as go
 def train_dqn(env):
     class Q_Network(chainer.Chain):
         def __init__(self, input_size, hidden_size, output_size):
+            #两层的多层感知器
             super(Q_Network, self).__init__(
                 fc1=L.Linear(input_size, hidden_size),
                 fc2=L.Linear(hidden_size, hidden_size),
@@ -36,9 +38,14 @@ def train_dqn(env):
     Q_ast = copy.deepcopy(Q)
     optiomizer = chainer.optimizers.Adam()
     optiomizer.setup(Q)
+
     epoch_num = 50
+    show_log_freq = 5
+
+
     step_max = len(env.data) - 1
     memory_size = 200
+
     batch_size = 20  # 50
     epsilon = 1.0
     epsilon_decrease = 1e-3
@@ -47,7 +54,7 @@ def train_dqn(env):
     train_freq = 10
     update_q_freq = 20
     gamma = 0.97
-    show_log_freq = 5
+
 
     memory = []
     total_step = 0
@@ -139,4 +146,9 @@ test = data[data_split:]
 Q, total_losses, total_rewards = train_dqn(Environment1(train))
 
 plot_loss_reward(total_losses, total_rewards)
+
+import matplotlib.pyplot as plt
+plt.plot(total_losses)
+plt.plot(total_rewards)
+plt.show()
 
