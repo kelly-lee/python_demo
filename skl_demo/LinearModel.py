@@ -112,20 +112,20 @@ def test():
     plt.show()
 
 
-def get_woe(num_bins):
-    columns = ["count_0", "count_1", "min", "max"]
-    df = pd.DataFrame(num_bins, columns=columns)
-    # df["total"] = df.count_0 + df.count_1
-    # df["percentage"] = df.total / df.total.sum()
-    # df["bad_rate"] = df.count_1 / df.total
-    df["good%"] = df.count_0 / df.count_0.sum()
-    df["bad%"] = df.count_1 / df.count_1.sum()
-    df["woe"] = np.log(df["good%"] / df["bad%"])
-    df["rate"] = df["good%"] - df["bad%"]
-    df["iv"] = df["rate"] * df.woe
-    print df.head()
-    print df["iv"].sum()
-    return df
+# def get_woe(num_bins):
+#     columns = ["min", "max", "count_0", "count_1"]
+#     df = pd.DataFrame(num_bins, columns=columns)
+#     # df["total"] = df.count_0 + df.count_1
+#     # df["percentage"] = df.total / df.total.sum()
+#     # df["bad_rate"] = df.count_1 / df.total
+#     df["good%"] = df.count_0 / df.count_0.sum()
+#     df["bad%"] = df.count_1 / df.count_1.sum()
+#     df["woe"] = np.log(df["good%"] / df["bad%"])
+#     df["rate"] = df["good%"] - df["bad%"]
+#     df["iv"] = df["rate"] * df.woe
+#     print df.head()
+#     print df["iv"].sum()
+#     return df
 
 
 def get_iv(df):
@@ -142,31 +142,58 @@ def iv(bin_data):
     return IV.sum()
 
 
+def get_woe(df, col, y, bins):
+    df = df[[col, y]].copy()
+    df["cut"] = pd.cut(df[col], bins)
+    bins_df = df.groupby("cut")[y].value_counts().unstack()
+    woe = bins_df["woe"] = np.log((bins_df[0] / bins_df[0].sum()) / (bins_df[1] / bins_df[1].sum()))
+    return woe
+
+
 def rankingcard():
     # rankingcard_step1()
     # rankingcard_step2()
     # rankingcard_step3()
     df = pd.read_csv('rankingcard_train.csv')
-    plot_iv(df, 'age', 'SeriousDlqin2yrs', 20)
-    # bins = bin_stat(df, 'age', 'SeriousDlqin2yrs', 20)
-    # print bins
+    print df.info()
+
+    # print df['NumberOfTime30-59DaysPastDueNotWorse'].value_counts()
+    # a = 'NumberOfTime30-59DaysPastDueNotWorse'
+    # df['p_' + a], retbins = pd.qcut(df[a], retbins=True, q=20)
+    # for col_name in df.columns:
+    #     if col_name in ['SeriousDlqin2yrs',
+    #                     'NumberOfTime30-59DaysPastDueNotWorse',
+    #
+    #                     'NumberOfTimes90DaysLate',
+    #                     'NumberRealEstateLoansOrLines',
+    #                     'NumberOfTime60-89DaysPastDueNotWorse',
+    #                     'NumberOfDependents']:
+    #         continue
+    # plot_iv(df, "age", 'SeriousDlqin2yrs', 20)
+    bins = bin_stat(df, 'age', 'SeriousDlqin2yrs', 20)
+    print bins
+    bins, woe = bin(df, 'age', 'SeriousDlqin2yrs', 6, 20)
+    w = get_woe(df, "age", "SeriousDlqin2yrs", bins)
+    df["age_woe"] = pd.cut(df["age"], bins).map(w)
+    print w
+    print df[["age", "age_woe"]].head()
     # print iv(bins)
-    # model_data = pd.read_csv('rankingcard_train.csv')
-    # model_data['qcut'], updown = pd.qcut(model_data["age"], retbins=True, q=20)
-    # coount_y0 = model_data[model_data["SeriousDlqin2yrs"] == 0].groupby(by="qcut").count()["SeriousDlqin2yrs"]
-    # coount_y1 = model_data[model_data["SeriousDlqin2yrs"] == 1].groupby(by="qcut").count()["SeriousDlqin2yrs"]
-    # num_bins = pd.DataFrame()
-    # num_bins['0'] = coount_y0
-    # num_bins['1'] = coount_y1
-    # num_bins['min'] = updown[0:-1]
-    # num_bins['max'] = updown[1:]
-    # # print num_bins
-    # woe = get_woe(num_bins.values)
-    # i = get_iv(woe)
-    # print i
+    # print scipy.stats.chi2_contingency([[4260, 5969], [3564, 5708]])[1]
+    # test_3(bins.values)
 
 
 import scipy
+
+
+def bin(data, a, c, bins, init_bins):
+    bin_data = bin_stat(data, a, c, init_bins)
+    while (len(bin_data) > bins):
+        bin_merge(bin_data)
+    bins = sorted(set(bin_data["min"]).union(bin_data["max"]))
+    P = bin_data[[0, 1]]
+    P = P / P.sum()
+    WOE = np.log(P[0] / P[1])
+    return bins, WOE
 
 
 def bin_stat(data, a, c, bins):
@@ -182,15 +209,17 @@ def bin_stat(data, a, c, bins):
 
 
 def bin_merge(bin_data):
-    CHI2_P = pd.concat([bin_data, bin_data.iloc[:, 2:].shift(1)], axis=1).apply(
-        lambda x: scipy.stats.chi2_contingency([[x.values[2], x.values[3]], [x.values[4], x.values[5]]])[1], axis=1)
-    idx = CHI2_P.idxmax()
-    print len(bin_data), idx
-    bin_data.iloc[idx, :] = [np.min([bin_data.iat[idx, 0], bin_data.iat[idx - 1, 0]])
-        , np.max([bin_data.iat[idx, 1], bin_data.iat[idx - 1, 1]])
-        , np.sum([bin_data.iat[idx, 2], bin_data.iat[idx - 1, 2]])
-        , np.sum([bin_data.iat[idx, 3], bin_data.iat[idx - 1, 3]])
-                             ]
+    chi2_data = pd.concat([bin_data, bin_data.iloc[:, 2:].shift(1)], axis=1)
+    chi2_p = chi2_data.apply(
+        lambda x: scipy.stats.chi2_contingency([x.values[2:4], x.values[4:6]])[1], axis=1)
+    # chi2_data = chi2_data.fillna(0)
+    # print chi2_data
+    idx = chi2_p.idxmax()
+    bin_data.iloc[idx, :] = [
+        np.nanmin([bin_data.iat[idx, 0], bin_data.iat[idx - 1, 0]])
+        , np.nanmax([bin_data.iat[idx, 1], bin_data.iat[idx - 1, 1]])
+        , np.nansum([bin_data.iat[idx, 2], bin_data.iat[idx - 1, 2]])
+        , np.nansum([bin_data.iat[idx, 3], bin_data.iat[idx - 1, 3]])]
     bin_data.drop([idx - 1], inplace=True)
     bin_data.index = np.arange(0, len(bin_data))
 
@@ -198,11 +227,15 @@ def bin_merge(bin_data):
 def plot_iv(data, a, c, bins):
     bin_data = bin_stat(data, a, c, bins)
     ivs = []
+    bins = []
+    ivs.append(iv(bin_data))
+    bins.append(len(bin_data))
     while (len(bin_data) > 2):
         bin_merge(bin_data)
-        print bin_data.head()
         ivs.append(iv(bin_data))
-    plt.plot(ivs)
+        bins.append(len(bin_data))
+    plt.plot(bins, ivs)
+    plt.xticks(bins)
     plt.show()
 
 
