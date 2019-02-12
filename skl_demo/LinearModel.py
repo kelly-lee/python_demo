@@ -7,12 +7,15 @@ from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+
 from sklearn.model_selection import cross_val_score
 
 import FeatureSelection
 import DataPreproceing
 import imblearn
 from imblearn.over_sampling import SMOTE
+import scikitplot as skplt
+import scipy
 
 
 def log_reg_train(X, y, C, max_iter=10000, penalty='l2'):
@@ -127,7 +130,6 @@ def test():
 #     print df["iv"].sum()
 #     return df
 
-
 def get_iv(df):
     rate = df["good%"] - df["bad%"]
     iv = np.sum(rate * df.woe)
@@ -142,63 +144,83 @@ def iv(bin_data):
     return IV.sum()
 
 
-def get_woe(df, col, y, bins):
-    df = df[[col, y]].copy()
-    df["cut"] = pd.cut(df[col], bins)
-    bins_df = df.groupby("cut")[y].value_counts().unstack()
-    woe = bins_df["woe"] = np.log((bins_df[0] / bins_df[0].sum()) / (bins_df[1] / bins_df[1].sum()))
-    return woe
-
-
 def rankingcard():
     # rankingcard_step1()
     # rankingcard_step2()
     # rankingcard_step3()
-    df = pd.read_csv('rankingcard_train.csv')
-    print df.info()
-
-    # print df['NumberOfTime30-59DaysPastDueNotWorse'].value_counts()
-    # a = 'NumberOfTime30-59DaysPastDueNotWorse'
-    # df['p_' + a], retbins = pd.qcut(df[a], retbins=True, q=20)
-    # for col_name in df.columns:
-    #     if col_name in ['SeriousDlqin2yrs',
-    #                     'NumberOfTime30-59DaysPastDueNotWorse',
-    #
-    #                     'NumberOfTimes90DaysLate',
-    #                     'NumberRealEstateLoansOrLines',
-    #                     'NumberOfTime60-89DaysPastDueNotWorse',
-    #                     'NumberOfDependents']:
-    #         continue
-    # plot_iv(df, "age", 'SeriousDlqin2yrs', 20)
-    bins = bin_stat(df, 'age', 'SeriousDlqin2yrs', 20)
-    print bins
-    bins, woe = bin(df, 'age', 'SeriousDlqin2yrs', 6, 20)
-    w = get_woe(df, "age", "SeriousDlqin2yrs", bins)
-    df["age_woe"] = pd.cut(df["age"], bins).map(w)
-    print w
-    print df[["age", "age_woe"]].head()
-    # print iv(bins)
-    # print scipy.stats.chi2_contingency([[4260, 5969], [3564, 5708]])[1]
-    # test_3(bins.values)
+    # rankingcard_step4()
+    rankingcard_step5()
 
 
-import scipy
+# def get_woe(df, col, y, bins):
+#     df = df[[col, y]].copy()
+#     df["cut"] = pd.cut(df[col], bins)
+#     bins_df = df.groupby("cut")[y].value_counts().unstack()
+#     print bins_df
+#     woe = bins_df["woe"] = np.log((bins_df[0] / bins_df[0].sum()) / (bins_df[1] / bins_df[1].sum()))
+#     return woe
+
+def get_score_card(s1, odd1, s2, odd2, lr, woe_dic, colunms):
+    B = (s2 - s1) * np.log(odd2 / odd1)
+    A = s1 + B * np.log(odd1)
+    print A, B
+    base_score = A - B * lr.intercept_
+    print 'base_score', base_score
+    for i, key in enumerate(colunms):
+        score = woe_dic[key] * (-B * lr.coef_[0][i])
+        print i, key, score
 
 
-def bin(data, a, c, bins, init_bins):
-    bin_data = bin_stat(data, a, c, init_bins)
-    while (len(bin_data) > bins):
-        bin_merge(bin_data)
-    bins = sorted(set(bin_data["min"]).union(bin_data["max"]))
-    P = bin_data[[0, 1]]
+def get_woe_dic(train, bin_dic):
+    woe_dic = {}
+    for key in bin_dic.keys():
+        bins = bin_dic[key]
+        woe = get_woe(train, key, 'SeriousDlqin2yrs', bins)
+        woe_dic[key] = woe
+    return woe_dic
+
+
+def get_bin_dic(train):
+    bins_dic = {
+        "RevolvingUtilizationOfUnsecuredLines": get_bins(train, 'RevolvingUtilizationOfUnsecuredLines',
+                                                         'SeriousDlqin2yrs', 9, 20)
+        , "age": get_bins(train, 'age', 'SeriousDlqin2yrs', 14, 20)
+        , "NumberOfTime30-59DaysPastDueNotWorse": [0, 1, 2, 13]
+        , "DebtRatio": get_bins(train, 'DebtRatio', 'SeriousDlqin2yrs', 7, 20)
+        , "MonthlyIncome": get_bins(train, 'MonthlyIncome', 'SeriousDlqin2yrs', 8, 20)
+        , "NumberOfOpenCreditLinesAndLoans": [0, 4.626536, 5.939805, 7.228987, 8.873983, 58]
+        , "NumberOfTimes90DaysLate": [0, 1, 2, 17]
+        , "NumberRealEstateLoansOrLines": [0, 1, 2, 4, 54]
+        , "NumberOfTime60-89DaysPastDueNotWorse": [0, 1, 2, 8]
+        , "NumberOfDependents": [0, 1, 2, 3]}
+    for key in bins_dic.keys():
+        bins = bins_dic[key]
+        bins[0], bins[-1] = -np.inf, np.inf
+    return bins_dic
+
+
+def get_woe(data, a, c, bins):
+    data_copy = data[[a, c]]
+    data_copy.loc[:, a] = pd.cut(data_copy[a], bins)
+    woe_data = data_copy.groupby([a, c]).size().unstack()
+    P = woe_data[[0, 1]]
     P = P / P.sum()
     WOE = np.log(P[0] / P[1])
-    return bins, WOE
+    return WOE
 
 
-def bin_stat(data, a, c, bins):
-    data['p_' + a], retbins = pd.qcut(data[a], retbins=True, q=bins)
-    bin_data = data.groupby(['p_' + a, c]).size().unstack()
+def get_bins(data, a, c, bins, init_bins):
+    bin_data = get_bin_data(data, a, c, init_bins)
+    while (len(bin_data) > bins):
+        bin_merge(bin_data)
+    return sorted(set(bin_data["min"]).union(bin_data["max"]))
+
+
+def get_bin_data(data, a, c, bins):
+    data_copy = data[[a, c]]
+    data_copy.loc[:, a], retbins = pd.qcut(data_copy[a], retbins=True, q=bins)
+
+    bin_data = data_copy.groupby([a, c]).size().unstack()
     bin_data.index = np.arange(0, len(bin_data))
     # bin_data['min'] = retbins[0:-1]
     # bin_data['max'] = retbins[1:]
@@ -224,8 +246,8 @@ def bin_merge(bin_data):
     bin_data.index = np.arange(0, len(bin_data))
 
 
-def plot_iv(data, a, c, bins):
-    bin_data = bin_stat(data, a, c, bins)
+def plot_iv(data, a, c, init_bins):
+    bin_data = get_bin_data(data, a, c, init_bins)
     ivs = []
     bins = []
     ivs.append(iv(bin_data))
@@ -236,7 +258,39 @@ def plot_iv(data, a, c, bins):
         bins.append(len(bin_data))
     plt.plot(bins, ivs)
     plt.xticks(bins)
+    plt.ylabel(a)
     plt.show()
+
+
+def rankingcard_step5():
+    train = pd.read_csv('rankingcard_train.csv')
+    test = pd.read_csv('rankingcard_test.csv')
+    bin_dic = get_bin_dic(train)
+    woe_dic = get_woe_dic(train, bin_dic)
+    for key in bin_dic.keys():
+        bins = bin_dic[key]
+        woe = woe_dic[key]
+        train[key] = pd.cut(train[key], bins).map(woe)
+        test[key] = pd.cut(test[key], bins).map(woe)
+    X_train = train.loc[:, train.columns != 'SeriousDlqin2yrs']
+    y_train = train['SeriousDlqin2yrs']
+    X_test = test.loc[:, test.columns != 'SeriousDlqin2yrs']
+    y_test = test['SeriousDlqin2yrs']
+    lr = LogisticRegression(penalty='l2', C=100, solver='newton-cg', max_iter=25)
+    lr.fit(X_train, y_train)
+    vali_proba_df = pd.DataFrame(lr.predict_proba(X_test))
+    skplt.metrics.plot_roc(y_test, vali_proba_df,
+                           plot_micro=False, figsize=(6, 6),
+                           plot_macro=False)
+    plt.show()
+    get_score_card(600, 1.0 / 60, 620, 1.0 / 30, lr, woe_dic, X_train.columns)
+
+
+def rankingcard_step4():
+    train = pd.read_csv('rankingcard_train.csv')
+    cols = ['RevolvingUtilizationOfUnsecuredLines', 'age', 'DebtRatio', 'MonthlyIncome']
+    for col in cols:
+        plot_iv(train, col, 'SeriousDlqin2yrs', 20)
 
 
 def rankingcard_step3():
