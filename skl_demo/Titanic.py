@@ -6,7 +6,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 
-data = pd.read_csv('data.csv')
+data = pd.read_csv('data.data')
 print data.info()
 print data.head(5)
 # axis 0删除行 1删除列

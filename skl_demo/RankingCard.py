@@ -2,6 +2,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.datasets import load_breast_cancer
 from sklearn.datasets import load_iris
@@ -199,12 +200,69 @@ def rankingcard_step5():
     get_score_card(600, 1.0 / 60, 620, 1.0 / 30, lr, woe_dic, X_train.columns)
 
 
+# SeriousDlqin2yrs                        149391 non-null int64
+# RevolvingUtilizationOfUnsecuredLines    149391 non-null float64   删除>1的  3321
+# age                                     149391 non-null int64     删除0
+# NumberOfTime30-59DaysPastDueNotWorse    149391 non-null int64     删除 98，96
+# DebtRatio                               149391 non-null float64   删除 >3的 27858
+# MonthlyIncome                           120170 non-null float64
+# NumberOfOpenCreditLinesAndLoans         149391 non-null int64
+# NumberOfTimes90DaysLate                 149391 non-null int64     删除 98，96
+# NumberRealEstateLoansOrLines            149391 non-null int64     正常
+# NumberOfTime60-89DaysPastDueNotWorse    149391 non-null int64     删除 98，96
+# NumberOfDependents                      145563 non-null float64
+
 def rankingcard():
     # rankingcard_step1()
     # rankingcard_step2()
     # rankingcard_step3()
     # rankingcard_step4()
-    rankingcard_step5()
+    # rankingcard_step5()
+    df = pd.read_csv("rankingcard.csv", index_col=0)
+    # df_copy = df.copy()
+    # df_copy.dropna(inplace=True)
+    # X = df_copy.loc[:, df_copy.columns != 'SeriousDlqin2yrs']
+    # y = df_copy['SeriousDlqin2yrs']
+    # rfr = RandomForestRegressor(n_estimators=100)
+    # score = cross_val_score(rfr, X, y, cv=5).mean()
+    # print len(df_copy), score
+
+    df.drop_duplicates(inplace=True)
+    DataPreproceing.fill_constant(df['NumberOfDependents'].values, fill_value=1, copy=False)
+    print len(df)
+    df.drop(index=df[df['age'] == 0].index, inplace=True)
+    print len(df)
+    df.drop(index=df[df['NumberOfTime30-59DaysPastDueNotWorse'] > 95].index, inplace=True)
+    df.drop(index=df[df['NumberOfTime60-89DaysPastDueNotWorse'] > 95].index, inplace=True)
+    df.drop(index=df[df['NumberOfTimes90DaysLate'] > 95].index, inplace=True)
+    print len(df)
+    df.drop(index=df[df['RevolvingUtilizationOfUnsecuredLines'] > 3].index, inplace=True)
+    print len(df)
+    # df.drop(index=df[df['DebtRatio'] > 3].index, inplace=True)
+    # print len(df)
+
+    a = df['DebtRatio']
+    print a.count()
+    print a.value_counts()
+    print a[(a > 20) & (a < 8500)].describe([0.01, 0.1, 0.25, 0.5, 0.75, 0.9, 0.99])
+    a = a[a > 1].sort_values().values
+    print df.ix[(a > 20) & (a < 50000), 'SeriousDlqin2yrs'].value_counts()
+    print len(a)
+    # x = ruoul[ruoul > 1.5].sort_values().values
+    # # print ruoul[ruoul > 1.5].describe()
+    plt.plot(a[(a > 1) & (a < 10)])
+    # plt.hist(a, alpha=0.4)
+    # print df['RevolvingUtilizationOfUnsecuredLines'].index
+    # print df['RevolvingUtilizationOfUnsecuredLines']
+    # plt.bar(df['RevolvingUtilizationOfUnsecuredLines'].index, df['RevolvingUtilizationOfUnsecuredLines'])
+    plt.show()
+
+    # X = df.loc[:, df.columns != 'SeriousDlqin2yrs']
+    # y = df['SeriousDlqin2yrs']
+    # DataPreproceing.fill_random_forest(X, y, 'MonthlyIncome', copy=False)
+    # rfr = RandomForestRegressor(n_estimators=100)
+    # score = cross_val_score(rfr, X, y, cv=5).mean()
+    # print len(df), score
 
 
 if __name__ == '__main__':

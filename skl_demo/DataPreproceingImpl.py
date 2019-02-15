@@ -3,7 +3,7 @@ import pandas as pd
 
 
 def normalization(data, feature_range=(0, 1)):
-    min, max = data.min(axis=0), data.max(axis=0)
+    min, max = data.nanmin(axis=0), data.nanmax(axis=0)
     range_min, range_max = feature_range[0], feature_range[1]
     data_normalization = (data - min) / (max - min)
     # print data_normalization

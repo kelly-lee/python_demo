@@ -255,6 +255,22 @@ def fill_rfr(data, target):
     return X_missing_reg
 
 
+def fill_random_forest(data, target, fill_feature, copy=True):
+    X = pd.concat([data, target], axis=1)
+    y = X[fill_feature]
+    X = X.iloc[:, X.columns != fill_feature]
+    y_train = y[y.notnull()]
+    y_test = y[y.isnull()]
+    X_train = X.iloc[y_train.index, :]
+    X_test = X.iloc[y_test.index, :]
+    rfr = RandomForestRegressor(n_estimators=100)
+    rfr.fit(X_train, y_train)
+    y_predict = rfr.predict(X_test)
+    if not copy:
+        data.loc[data.loc[:, fill_feature].isnull(), fill_feature] = y_predict
+    return y_predict
+
+
 def generateNan(data, missing_rate=0.5):
     shape = data.shape
     data_row_len = shape[0]
