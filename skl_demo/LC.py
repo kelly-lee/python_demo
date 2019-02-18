@@ -31,6 +31,41 @@ import xgboost as xgb
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 
 
+def same_info(data, y):
+    col_val_p = pd.DataFrame()
+    for column in data.columns:
+        col_val_count = data[column].value_counts()
+        col_val_count_max = col_val_count.max().astype(float)
+        col_val_count_max_item = col_val_count[col_val_count == col_val_count_max]
+        col_val_count_max_item_name = col_val_count_max_item.index.values[0]
+        p = col_val_count_max / len(data)
+        p_c = data.groupby([column, y]).size().unstack()
+        p_c = p_c.loc[col_val_count_max_item_name, :] / p_c.sum()
+        col_val_p = col_val_p.append([[column, col_val_count.index.values, col_val_count_max_item_name,
+                                       p, p_c]])
+    col_val_p.columns = ['feature', 'items', 'max_count_item', 'max_count_pct', 'max_count_pct_by_y']
+    col_val_p.index = col_val_p['feature']
+    col_val_p.index.drop(columns=['feature'], inplace=True)
+    return col_val_p.sort_values(by='max_count_pct', ascending=False).head(20)
+
+
+def info(data):
+    # print data.shape
+    # print data.dtypes.value_counts()
+    # missing_pct = data.isnull().sum() / len(df)
+    # print missing_pct.sort_values(ascending=False)
+    same_info_df = same_info(data, 'loan_status')
+    same_info_df.to_csv('LC_SAME_VAL_2016Q3.csv')
+    # print data.select_dtypes(include=['O']).describe().T
+    # print data.select_dtypes(include=['float']).describe().T
+    # print data.select_dtypes(include=['int']).describe().T
+
+
+def drop_same_info(data, y, threshold):
+    same_info_df = same_info(data, y)
+    data.drop(colums=same_info_df[same_info_df['max_count_pct'] >= threshold].index, inplace=True)
+
+
 def drop(data):
     # 删除重复
     df.drop_duplicates(inplace=True)
@@ -43,11 +78,11 @@ def drop(data):
 def drop_high_missing_pct(data, threshold):
     # 基本上删除的第二共同贷款人信息
     missing_pct = data.isnull().sum() / len(df)
-    missing_pct = missing_pct[missing_pct > 0]
     drop_columns = missing_pct[missing_pct > threshold].index
-    # print missing_pct.sort_values(ascending=False)
-    # print drop_columns
-    df.drop(columns=drop_columns, inplace=True)
+    print 'drop columns by high missing pct', drop_columns
+    # thresh_count = len(data) * threshold  # 设定阀值
+    # data.dropna(thresh=thresh_count, axis=1, inplace=True)
+    data.drop(columns=drop_columns, inplace=True)
 
 
 def encode_target(data):
@@ -55,7 +90,7 @@ def encode_target(data):
     data.loan_status.replace('Current', int(1), inplace=True)
     data.loan_status.replace('Late (16-30 days)', int(0), inplace=True)
     data.loan_status.replace('Late (31-120 days)', int(0), inplace=True)
-    data.loan_status.replace('Charged Off', np.nan, inplace=True)
+    data.loan_status.replace('Charged Off', int(0), inplace=True)
     data.loan_status.replace('In Grace Period', np.nan, inplace=True)
     data.loan_status.replace('Default', np.nan, inplace=True)
     data.dropna(subset=['loan_status'], inplace=True)
@@ -117,6 +152,7 @@ def draw_bar(data, features):
         i += 1
         ax = fig.add_subplot(row, col, i)
         p = data.groupby([feature, 'loan_status']).size().unstack()
+        print p
         p = p / p.sum()
         print p.iloc[:, 0], p.index
         ax.bar(p.index, height=p.iloc[:, 0], width=0.45, alpha=0.8, color='red', label="bad")
@@ -214,40 +250,43 @@ def train_xgboost(X_train, X_test, y_train, y_test):
 
 if __name__ == '__main__':
     df = pd.read_csv("LC_2016Q3.csv", low_memory=False)
-    print df.shape
-    drop(df)
-    drop_high_missing_pct(df, threshold=0.99)
-    encode_target(df)
-    encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
-    drop_high_type(df, 49)
 
+    # 时间类的删除: 最早授信日，最近授信日，最后还款日，下一个还款日，放款日
+    drop_features(df, ['earliest_cr_line', 'last_credit_pull_d', 'issue_d', 'next_pymnt_d', 'last_pymnt_d'])
+    drop_features(df, ['addr_state', 'zip_code'])
+    # 删除相关性变量
+    # drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'installment'])
+
+    # print info(df)
+    # 删除空行空列重复数据
+    drop(df)
+    # print info(df)
+    drop_high_missing_pct(df, threshold=0.9)
+    encode_target(df)
+    drop_same_info(df, 'loan_status', threshold=0.9)
+    print info(df)
+    # encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
+    # drop_high_type(df, 49)
 
     # 这一步会降分
     # 'next_pymnt_d', 'last_credit_pull_d',
-    #时间类的删除
-    drop_features(df, ['next_pymnt_d', 'last_credit_pull_d', 'last_pymnt_d'])
-    #负样本中取值单一的
+
+    # 负样本中取值单一的
     # drop_features(df, ['pymnt_plan', 'application_type', 'issue_d'])
     # drop_features(df, ['title', 'purpose'])
-    # 删除相关性变量
-    drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'installment'])
-
 
     # drop_biz(df)
     print df.shape
 
-    print df.select_dtypes(include=['O']).describe().T
-    missing_pct = df.isnull().sum() / len(df)
-    missing_pct = missing_pct[missing_pct > 0]
-    print missing_pct.sort_values(ascending=False)
     # print df['acc_open_past_24mths'].value_counts()
 
-    for key in ['int_rate', 'acc_open_past_24mths']:
-        # RankingCard.plot_iv(df, key, 'loan_status', 10)
-        bins = RankingCard.get_bins(df, key, 'loan_status', 5, 20)
-        woe = RankingCard.get_woe(df, key, 'loan_status', bins)
-        # df[key] = pd.cut(df[key], bins).map(woe)
-        print df[key].value_counts()
+    # for key in ['int_rate', 'acc_open_past_24mths']:
+    #     # RankingCard.plot_iv(df, key, 'loan_status', 10)
+    #     bins = RankingCard.get_bins(df, key, 'loan_status', 5, 20)
+    #     woe = RankingCard.get_woe(df, key, 'loan_status', bins)
+    #     # df[key] = pd.cut(df[key], bins).map(woe)
+    #     print df[key].value_counts()
+
     # draw_bar(df, features=['home_ownership', 'verification_status',
     #                        'initial_list_status',
     #                        'grade', 'sub_grade', 'issue_d', 'purpose', 'title',
@@ -267,7 +306,7 @@ if __name__ == '__main__':
     # print df['application_type'].value_counts()  # 哑变量
     #
     # df = df[['int_rate','acc_open_past_24mths','verification_status','title','loan_status']]
-    X_train, X_test, y_train, y_test = train_test(df)
+    # X_train, X_test, y_train, y_test = train_test(df)
     # train_gbr(X_train, X_test, y_train, y_test)
     # train_lr(X_train, X_test, y_train, y_test)
-    train_xgboost(X_train, X_test, y_train, y_test)
+    # train_xgboost(X_train, X_test, y_train, y_test)
