@@ -21,13 +21,14 @@ import scipy
 
 def get_bin_data(data, a, c, bins):
     data_copy = data[[a, c]]
-    data_copy.loc[:, a], retbins = pd.qcut(data_copy[a], retbins=True, q=bins)
+    # data_copy.dropna(inplace=True)
+    # data_copy.sort_values(by=a, ascending=True, inplace=True)
+    data_copy.loc[:, a], retbins = pd.qcut(data_copy[a], retbins=True, q=bins, duplicates='drop')
 
     bin_data = data_copy.groupby([a, c]).size().unstack()
     bin_data.index = np.arange(0, len(bin_data))
     # bin_data['min'] = retbins[0:-1]
     # bin_data['max'] = retbins[1:]
-    # return bin_data
     min = pd.Series(retbins[0:-1], index=bin_data.index, name='min')
     max = pd.Series(retbins[1:], index=bin_data.index, name='max')
     return pd.concat([min, max, bin_data], axis=1)
@@ -35,6 +36,7 @@ def get_bin_data(data, a, c, bins):
 
 def bin_merge(bin_data):
     chi2_data = pd.concat([bin_data, bin_data.iloc[:, 2:].shift(1)], axis=1)
+    # print chi2_data
     chi2_p = chi2_data.apply(
         lambda x: scipy.stats.chi2_contingency([x.values[2:4], x.values[4:6]])[1], axis=1)
     # chi2_data = chi2_data.fillna(0)
@@ -115,6 +117,7 @@ def get_iv(bin_data):
 
 def plot_iv(data, a, c, init_bins):
     bin_data = get_bin_data(data, a, c, init_bins)
+    # print bin_data
     ivs = []
     bins = []
     ivs.append(get_iv(bin_data))
@@ -192,6 +195,7 @@ def rankingcard_step5():
     y_test = test['SeriousDlqin2yrs']
     lr = LogisticRegression(penalty='l2', C=100, solver='newton-cg', max_iter=25)
     lr.fit(X_train, y_train)
+    print lr.score(X_test, y_test)
     vali_proba_df = pd.DataFrame(lr.predict_proba(X_test))
     skplt.metrics.plot_roc(y_test, vali_proba_df,
                            plot_micro=False, figsize=(6, 6),
@@ -266,4 +270,4 @@ def rankingcard():
 
 
 if __name__ == '__main__':
-    rankingcard()
+    rankingcard_step5()

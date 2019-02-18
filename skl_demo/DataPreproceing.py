@@ -30,7 +30,7 @@ from sklearn.metrics import SCORERS
         label_encode/label_decode 【有序特征】(不能运算)【分类】转【数值】
         feature_binaryzation/  有距(能加减，不能乘除)、比率(能加减乘除) 数值 【二值化】
         feature_bins 有距(能加减，不能乘除)、比率(能加减乘除) 数值【分箱】
-    特征标准化、归一化
+    特征标准化、归一化 normalization,standardization
     筛选有价值的特征
     分析特征之间的相关性
 """
