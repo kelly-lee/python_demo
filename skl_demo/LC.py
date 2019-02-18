@@ -34,36 +34,43 @@ from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 def same_info(data, y):
     col_val_p = pd.DataFrame()
     for column in data.columns:
+        if column == y:
+            continue
         col_val_count = data[column].value_counts()
         col_val_count_max = col_val_count.max().astype(float)
         col_val_count_max_item = col_val_count[col_val_count == col_val_count_max]
         col_val_count_max_item_name = col_val_count_max_item.index.values[0]
         p = col_val_count_max / len(data)
-        p_c = data.groupby([column, y]).size().unstack()
-        p_c = p_c.loc[col_val_count_max_item_name, :] / p_c.sum()
-        col_val_p = col_val_p.append([[column, col_val_count.index.values, col_val_count_max_item_name,
-                                       p, p_c]])
+        try:
+            p_c = data.groupby([column, y]).size().unstack()
+            p_c = p_c.loc[col_val_count_max_item_name, :] / p_c.sum()
+            col_val_p = col_val_p.append([[column, col_val_count.index.values, col_val_count_max_item_name,
+                                           p, p_c]])
+        except:
+            print 'error', column
     col_val_p.columns = ['feature', 'items', 'max_count_item', 'max_count_pct', 'max_count_pct_by_y']
     col_val_p.index = col_val_p['feature']
-    col_val_p.index.drop(columns=['feature'], inplace=True)
+    col_val_p.drop(columns=['feature'], inplace=True)
     return col_val_p.sort_values(by='max_count_pct', ascending=False).head(20)
 
 
 def info(data):
-    # print data.shape
-    # print data.dtypes.value_counts()
+    print data.shape
+    print data.dtypes.value_counts()
     # missing_pct = data.isnull().sum() / len(df)
     # print missing_pct.sort_values(ascending=False)
-    same_info_df = same_info(data, 'loan_status')
-    same_info_df.to_csv('LC_SAME_VAL_2016Q3.csv')
-    # print data.select_dtypes(include=['O']).describe().T
+    # same_info_df = same_info(data, 'loan_status')
+    # same_info_df.to_csv('LC_SAME_VAL_2016Q3.csv')
+    print data.select_dtypes(include=['O']).describe().T
     # print data.select_dtypes(include=['float']).describe().T
     # print data.select_dtypes(include=['int']).describe().T
 
 
 def drop_same_info(data, y, threshold):
     same_info_df = same_info(data, y)
-    data.drop(colums=same_info_df[same_info_df['max_count_pct'] >= threshold].index, inplace=True)
+    drop_columns = same_info_df[same_info_df['max_count_pct'] >= threshold].index
+    print 'drop columns by same val', drop_columns
+    data.drop(columns=drop_columns, inplace=True)
 
 
 def drop(data):
@@ -121,6 +128,7 @@ def drop_biz(data):
     # data.drop('issue_d', 1, inplace=True)
     # df.drop('',1,inplace=True)
     # 贷后相关的字段
+
     data.drop(['out_prncp', 'out_prncp_inv', 'total_pymnt',
                'total_pymnt_inv', 'total_rec_prncp', 'grade', 'sub_grade'], 1, inplace=True)
     data.drop(['total_rec_int', 'total_rec_late_fee',
@@ -168,7 +176,7 @@ def draw_bar(data, features):
 def train_test(data):
     y = data.loan_status
     X = data.drop('loan_status', 1, inplace=False)
-    X['title'].fillna('Other', inplace=True)
+    # X['title'].fillna('Other', inplace=True)
     X = pd.get_dummies(X)
     # print X.columns
     print X.shape
@@ -250,23 +258,33 @@ def train_xgboost(X_train, X_test, y_train, y_test):
 
 if __name__ == '__main__':
     df = pd.read_csv("LC_2016Q3.csv", low_memory=False)
-
+    # [ 'emp_title',  'title',
+    #  'initial_list_status',
+    # drop_biz(df)
     # 时间类的删除: 最早授信日，最近授信日，最后还款日，下一个还款日，放款日
     drop_features(df, ['earliest_cr_line', 'last_credit_pull_d', 'issue_d', 'next_pymnt_d', 'last_pymnt_d'])
     drop_features(df, ['addr_state', 'zip_code'])
     # 删除相关性变量
-    # drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'installment'])
+    drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'installment', 'title'])
+    # 贷后字段
+    # drop_features(df, ['recoveries', 'collection_recovery_fee'])
+    drop_features(df, ['total_pymnt', 'total_rec_prncp', 'total_pymnt_inv', 'total_rec_int', 'total_rec_late_fee'])
+    # drop_features(df, ['last_pymnt_amnt'])
+    # # 2字段值一样
+    # drop_features(df, ['out_prncp', 'out_prncp_inv'])
+    drop_features(df, ['grade', 'sub_grade'])
 
     # print info(df)
+
     # 删除空行空列重复数据
     drop(df)
     # print info(df)
     drop_high_missing_pct(df, threshold=0.9)
     encode_target(df)
     drop_same_info(df, 'loan_status', threshold=0.9)
+    encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
+    drop_high_type(df, 49)
     print info(df)
-    # encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
-    # drop_high_type(df, 49)
 
     # 这一步会降分
     # 'next_pymnt_d', 'last_credit_pull_d',
@@ -275,16 +293,15 @@ if __name__ == '__main__':
     # drop_features(df, ['pymnt_plan', 'application_type', 'issue_d'])
     # drop_features(df, ['title', 'purpose'])
 
-    # drop_biz(df)
     print df.shape
 
     # print df['acc_open_past_24mths'].value_counts()
 
-    # for key in ['int_rate', 'acc_open_past_24mths']:
+    # for key in ['int_rate', 'acc_open_past_24mths', 'emp_length', 'open_rv_24m', 'num_tl_op_past_12m', 'dti']:
     #     # RankingCard.plot_iv(df, key, 'loan_status', 10)
     #     bins = RankingCard.get_bins(df, key, 'loan_status', 5, 20)
     #     woe = RankingCard.get_woe(df, key, 'loan_status', bins)
-    #     # df[key] = pd.cut(df[key], bins).map(woe)
+    #     df[key] = pd.cut(df[key], bins).map(woe)
     #     print df[key].value_counts()
 
     # draw_bar(df, features=['home_ownership', 'verification_status',
@@ -306,7 +323,7 @@ if __name__ == '__main__':
     # print df['application_type'].value_counts()  # 哑变量
     #
     # df = df[['int_rate','acc_open_past_24mths','verification_status','title','loan_status']]
-    # X_train, X_test, y_train, y_test = train_test(df)
+    X_train, X_test, y_train, y_test = train_test(df)
     # train_gbr(X_train, X_test, y_train, y_test)
     # train_lr(X_train, X_test, y_train, y_test)
-    # train_xgboost(X_train, X_test, y_train, y_test)
+    train_xgboost(X_train, X_test, y_train, y_test)
