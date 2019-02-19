@@ -31,6 +31,21 @@ import xgboost as xgb
 from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
 
 
+def iv_info(data, y, bins):
+    iv_data = pd.DataFrame()
+    for key in data.columns:
+        try:
+            bin_data = RankingCard.get_bin_data(data, key, y, bins)
+            iv = RankingCard.get_iv(bin_data)
+            print key, iv
+            iv_data = iv_data.append([[key, iv]])
+        except:
+            print key, 'error'
+    iv_data.columns = ['feature', 'iv']
+    iv_data.sort_values(by='iv')
+    return iv_data
+
+
 def same_info(data, y):
     col_val_p = pd.DataFrame()
     for column in data.columns:
@@ -111,7 +126,7 @@ def drop_high_type(data, threshold):
     type_desc = data.select_dtypes(include=['O']).describe().T
     drop_columns = type_desc[type_desc['unique'] > threshold].index
     # print type_desc.sort_values(by='unique', ascending=False)
-    # print drop_columns
+    print 'drop columns by high type', drop_columns
     df.drop(columns=drop_columns, inplace=True)
 
 
@@ -264,25 +279,25 @@ if __name__ == '__main__':
     # 时间类的删除: 最早授信日，最近授信日，最后还款日，下一个还款日，放款日
     drop_features(df, ['earliest_cr_line', 'last_credit_pull_d', 'issue_d', 'next_pymnt_d', 'last_pymnt_d'])
     drop_features(df, ['addr_state', 'zip_code'])
-    # 删除相关性变量
+    # # 删除相关性变量
     drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'installment', 'title'])
-    # 贷后字段
-    # drop_features(df, ['recoveries', 'collection_recovery_fee'])
+    # # 贷后字段
+    drop_features(df, ['recoveries', 'collection_recovery_fee'])
     drop_features(df, ['total_pymnt', 'total_rec_prncp', 'total_pymnt_inv', 'total_rec_int', 'total_rec_late_fee'])
-    # drop_features(df, ['last_pymnt_amnt'])
-    # # 2字段值一样
-    # drop_features(df, ['out_prncp', 'out_prncp_inv'])
+    drop_features(df, ['last_pymnt_amnt'])
+    # # # 2字段值一样
+    drop_features(df, ['out_prncp', 'out_prncp_inv'])
     drop_features(df, ['grade', 'sub_grade'])
 
     # print info(df)
 
     # 删除空行空列重复数据
-    drop(df)
+
     # print info(df)
     drop_high_missing_pct(df, threshold=0.9)
-    encode_target(df)
-    drop_same_info(df, 'loan_status', threshold=0.9)
+    encode_target(df)  # 删除一些行
     encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
+    drop_same_info(df, 'loan_status', threshold=0.9)
     drop_high_type(df, 49)
     print info(df)
 
@@ -297,12 +312,20 @@ if __name__ == '__main__':
 
     # print df['acc_open_past_24mths'].value_counts()
 
-    # for key in ['int_rate', 'acc_open_past_24mths', 'emp_length', 'open_rv_24m', 'num_tl_op_past_12m', 'dti']:
-    #     # RankingCard.plot_iv(df, key, 'loan_status', 10)
-    #     bins = RankingCard.get_bins(df, key, 'loan_status', 5, 20)
-    #     woe = RankingCard.get_woe(df, key, 'loan_status', bins)
-    #     df[key] = pd.cut(df[key], bins).map(woe)
-    #     print df[key].value_counts()
+    for key in df.columns:
+        # for key in ['int_rate', 'acc_open_past_24mths', 'emp_length', 'open_rv_24m', 'num_tl_op_past_12m', 'dti']:
+        # RankingCard.plot_iv(df, key, 'loan_status', 10)
+        try:
+            bin_data = RankingCard.get_bin_data(df, key, 'loan_status', 20)
+            iv = RankingCard.get_iv(bin_data)
+            print key, iv
+        except:
+            print key, 'error'
+
+        # bins = RankingCard.get_bins(df, key, 'loan_status', 5, 20)
+        # woe = RankingCard.get_woe(df, key, 'loan_status', bins)
+        # df[key] = pd.cut(df[key], bins).map(woe)
+        # print df[key].value_counts()
 
     # draw_bar(df, features=['home_ownership', 'verification_status',
     #                        'initial_list_status',
@@ -324,6 +347,6 @@ if __name__ == '__main__':
     #
     # df = df[['int_rate','acc_open_past_24mths','verification_status','title','loan_status']]
     X_train, X_test, y_train, y_test = train_test(df)
-    # train_gbr(X_train, X_test, y_train, y_test)
+    train_gbr(X_train, X_test, y_train, y_test)
     # train_lr(X_train, X_test, y_train, y_test)
-    train_xgboost(X_train, X_test, y_train, y_test)
+    # train_xgboost(X_train, X_test, y_train, y_test)
