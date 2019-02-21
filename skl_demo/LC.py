@@ -66,7 +66,7 @@ def same_val_info(data, y):
             col_val_count_max = col_val_count.max()
             col_val_count_max_item = col_val_count[col_val_count == col_val_count_max]
             col_val_count_max_item_name = col_val_count_max_item.index.values[0]
-            p = col_val_count_max * 1.0 / len(data)
+            p = col_val_count_max * 1.0 / data[column].notnull().sum()
 
             p_c = data.groupby([column, y]).size().unstack()
             p_c = p_c.loc[col_val_count_max_item_name, :] / p_c.sum()
@@ -299,16 +299,79 @@ def train_xgboost(X_train, X_test, y_train, y_test):
 
 if __name__ == '__main__':
     df = pd.read_csv("LC_2016Q3.csv", low_memory=False)
+    encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
     encode_target(df)  # 删除一些行
-    print info(df)
-    # [ 'emp_title',  'title',
-    #  'initial_list_status',
-    # drop_biz(df)
+
     # 时间类的删除: 最早授信日，最近授信日，最后还款日，下一个还款日，放款日
     drop_features(df, ['earliest_cr_line', 'last_credit_pull_d', 'issue_d', 'next_pymnt_d', 'last_pymnt_d'])
     drop_features(df, ['addr_state', 'zip_code'])
+
+    # drop_features(df, ['installment', 'title'])
+
+    # inq_fi
+    # inq_last_6mths
+    # max_bal_bc
+    # annual_inc
+    # mo_sin_old_rev_tl_op
+    # total_rev_hi_lim
+    # open_il_12m
+    # mths_since_recent_inq
+    # mort_acc
+    # loan_amnt
+    # all_util
+    # tot_cur_bal
+    # open_acc_6m
+    # mths_since_recent_bc
+    # mo_sin_rcnt_rev_tl_op
+    # open_rv_12m
+    # total_bc_limit
+    # open_il_24m
+    # bc_open_to_buy
+    # il_util
+    # tot_hi_cred_lim
+    # inq_last_12m
+    # avg_cur_bal
+    # mths_since_rcnt_il
+    # dti
+    # mo_sin_rcnt_tl
+    # installment
+    # num_tl_op_past_12m
+    # open_rv_24m
+    # hardship_amount
+    # orig_projected_additional_accrued_interest
+    # acc_open_past_24mths
+    # settlement_term
+    # hardship_payoff_balance_amount
+    # settlement_percentage
+    # total_rec_late_fee
+    # hardship_last_payment_amount
+    # settlement_amount
+    # annual_inc_joint
+    # int_rate
+    # hardship_dpd
+    # dti_joint
+
+    # loan_amnt = total_rec_prncp+out_prncp
+    high_iv_df = df[['loan_amnt', 'total_rec_prncp', 'out_prncp', 'last_pymnt_amnt',
+                     'total_pymnt', 'recoveries', 'collection_recovery_fee', 'total_rec_late_fee',
+                     'dti_joint', 'hardship_dpd', 'int_rate', 'annual_inc_joint', 'settlement_amount',
+                     'hardship_last_payment_amount', 'settlement_percentage', 'hardship_payoff_balance_amount',
+                     'settlement_term',
+                     'loan_status']]
+    high_iv_df.to_csv('high_iv.csv')
+    print info(df)
+
+
     # # 删除相关性变量
-    drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'installment', 'title'])
+    drop_features(df, ['funded_amnt', 'funded_amnt_inv'])
+    drop_features(df, ['total_pymnt', 'total_pymnt_inv'])
+    drop_features(df, ['out_prncp', 'out_prncp_inv'])
+    drop_iv_info(df, 'loan_status', bins=20, threshold=0.02)
+
+    # 'emp_title',  'title',
+    #  'initial_list_status',
+    # drop_biz(df)
+
     # # # 贷后字段
     # drop_features(df, ['recoveries', 'collection_recovery_fee'])
     # drop_features(df, ['total_pymnt', 'total_rec_prncp', 'total_pymnt_inv', 'total_rec_int', 'total_rec_late_fee'])
@@ -322,13 +385,10 @@ if __name__ == '__main__':
     # 删除空行空列重复数据
 
     # print info(df)
-    drop_high_missing_pct(df, threshold=0.9)
-
-    encode(df, features=['emp_length', 'revol_util', 'term', 'int_rate'])
+    # drop_high_missing_pct(df, threshold=0.9)
     drop_same_val_info(df, 'loan_status', threshold=0.9)
     drop_high_type(df, 49)
     # print info(df)
-    drop_iv_info(df, 'loan_status', bins=20, threshold=0.02)
 
     # 这一步会降分
     # 'next_pymnt_d', 'last_credit_pull_d',
