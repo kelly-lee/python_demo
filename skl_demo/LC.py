@@ -303,9 +303,29 @@ if __name__ == '__main__':
     encode_target(df)  # 删除一些行
 
     # 时间类的删除: 最早授信日，最近授信日，最后还款日，下一个还款日，放款日
-    drop_features(df, ['earliest_cr_line', 'last_credit_pull_d', 'issue_d', 'next_pymnt_d', 'last_pymnt_d'])
-    drop_features(df, ['addr_state', 'zip_code'])
+    drop_features(df, ['earliest_cr_line', 'last_credit_pull_d', 'issue_d', 'next_pymnt_d', 'last_pymnt_d',
+                       'payment_plan_start_date'])
+    drop_features(df, ['addr_state', 'zip_code', 'desc', 'id', 'member_id', 'emp_title'])
+    drop_features(df, ['policy_code'])
 
+    # # 删除相关性变量
+    # loan_amnt funded_amnt funded_amnt_inv
+    # total_pymnt total_pymnt_inv
+    # out_prncp out_prncp_inv
+    drop_features(df, ['funded_amnt', 'funded_amnt_inv', 'total_pymnt_inv', 'out_prncp_inv', 'title', 'sub_grade'])
+    # 贷中贷后字段
+    drop_features(df, ['total_pymnt', 'total_rec_prncp', 'out_prncp', 'recoveries', 'collection_recovery_fee',
+                       'total_rec_late_fee', 'last_pymnt_amnt'])
+    # 宽松期字段
+    drop_features(df, ['hardship_dpd', 'hardship_last_payment_amount', 'hardship_payoff_balance_amount',
+                       'orig_projected_additional_accrued_interest', 'hardship_amount', 'hardship_status',
+                       'hardship_loan_status', 'hardship_end_date', 'hardship_start_date', 'hardship_reason',
+                       'hardship_type', 'hardship_length', 'deferral_term', 'hardship_flag'])
+    # 资产转移字段
+    drop_features(df, ['settlement_amount', 'settlement_percentage', 'settlement_term', 'settlement_status',
+                       'debt_settlement_flag_date', 'settlement_date', 'debt_settlement_flag'])
+
+    drop(df)
     # drop_features(df, ['installment', 'title'])
 
     # inq_fi
@@ -320,52 +340,38 @@ if __name__ == '__main__':
     # loan_amnt
     # all_util
     # tot_cur_bal
-    # open_acc_6m
+    # open_acc_6m 过去6个月开分期账户数目
     # mths_since_recent_bc
-    # mo_sin_rcnt_rev_tl_op
-    # open_rv_12m
-    # total_bc_limit
-    # open_il_24m
-    # bc_open_to_buy
-    # il_util
-    # tot_hi_cred_lim
-    # inq_last_12m
-    # avg_cur_bal
-    # mths_since_rcnt_il
-    # dti
-    # mo_sin_rcnt_tl
-    # installment
-    # num_tl_op_past_12m
-    # open_rv_24m
-    # hardship_amount
-    # orig_projected_additional_accrued_interest
-    # acc_open_past_24mths
-    # settlement_term
-    # hardship_payoff_balance_amount
-    # settlement_percentage
-    # total_rec_late_fee
-    # hardship_last_payment_amount
-    # settlement_amount
-    # annual_inc_joint
-    # int_rate
-    # hardship_dpd
-    # dti_joint
+    # mo_sin_rcnt_rev_tl_op 最近开设循环账户（信用卡）的月份数
+    # open_rv_12m  过去12个月开放的周转数
+    # total_bc_limit 银行卡总金额高信用/信用限额
+    # open_il_24m 过去24个月开分期账户数目
+    # bc_open_to_buy 所有银行卡帐户的当前总余额与高信用/信用限额的比率。
+    # il_util 当前总余额与高信用/信用限额的比率
+    # tot_hi_cred_lim 最高授信／授信限制
+    # inq_last_12m 近12个月查询次数
+    # avg_cur_bal 所有账户的平均余额
+    # mths_since_rcnt_il 自分期账户开户月份数
+    # dti 借款人每月负债／每月收入
+    # mo_sin_rcnt_tl 最近一次开户以来的月数
+    # installment 每期贷款金额  重要                                   1
+    # num_tl_op_past_12m 过去12个月开分期账户数目
+    # open_rv_24m 过去24个月开放的周转数   重要
+    # acc_open_past_24mths 过去24个月交易数目 重要                      1
+    # annual_inc_joint 共同借贷人在登记期间提供的自报年度综合收益
+    # int_rate 贷款利率                                               1
+    # dti_joint 借款人每月负债／每月收入 （负债不包括抵押贷款和信用贷款）
 
     # loan_amnt = total_rec_prncp+out_prncp
-    high_iv_df = df[['loan_amnt', 'total_rec_prncp', 'out_prncp', 'last_pymnt_amnt',
-                     'total_pymnt', 'recoveries', 'collection_recovery_fee', 'total_rec_late_fee',
-                     'dti_joint', 'hardship_dpd', 'int_rate', 'annual_inc_joint', 'settlement_amount',
-                     'hardship_last_payment_amount', 'settlement_percentage', 'hardship_payoff_balance_amount',
-                     'settlement_term',
-                     'loan_status']]
-    high_iv_df.to_csv('high_iv.csv')
+    # high_iv_df = df[['loan_amnt', 'total_rec_prncp', 'last_pymnt_amnt',
+    #                  'total_pymnt',
+    #                  'dti_joint', 'int_rate', 'annual_inc_joint', 'acc_open_past_24mths',
+    #                  'open_rv_24m', 'num_tl_op_past_12m', 'installment',
+    #                  'loan_status']]
+    # high_iv_df.to_csv('high_iv.csv')
     print info(df)
 
-
-    # # 删除相关性变量
-    drop_features(df, ['funded_amnt', 'funded_amnt_inv'])
-    drop_features(df, ['total_pymnt', 'total_pymnt_inv'])
-    drop_features(df, ['out_prncp', 'out_prncp_inv'])
+    # 已还总额,已还本金,剩余本金，坏用户为0
     drop_iv_info(df, 'loan_status', bins=20, threshold=0.02)
 
     # 'emp_title',  'title',
@@ -386,7 +392,7 @@ if __name__ == '__main__':
 
     # print info(df)
     # drop_high_missing_pct(df, threshold=0.9)
-    drop_same_val_info(df, 'loan_status', threshold=0.9)
+    # drop_same_val_info(df, 'loan_status', threshold=0.9)
     drop_high_type(df, 49)
     # print info(df)
 
@@ -435,7 +441,8 @@ if __name__ == '__main__':
     # print df['application_type'].value_counts()  # 哑变量
     #
     # df = df[['int_rate','acc_open_past_24mths','verification_status','title','loan_status']]
+    print df.columns
     X_train, X_test, y_train, y_test = train_test(df)
-    train_gbr(X_train, X_test, y_train, y_test)
+    # train_gbr(X_train, X_test, y_train, y_test)
     # train_lr(X_train, X_test, y_train, y_test)
-    # train_xgboost(X_train, X_test, y_train, y_test)
+    train_xgboost(X_train, X_test, y_train, y_test)
