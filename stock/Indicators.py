@@ -458,11 +458,13 @@ def ochl2ind(open, close, high, low, volume):
     data['upper_band'] = upper_band
     data['middle_band'] = middle_band
     data['lower_band'] = lower_band
+    print 'bbands'
     # macd
     macd, macdsignal, macdhist = MACD(close, 12, 26, 9)
     data['macd'] = macd
     data['macd_signal'] = macdsignal
     data['macd_hist'] = macdhist
+    print 'macd'
     # kdj
     slow_k, slow_d = STOCH(high, low, close, 9, 3, 3)
     data['slow_k'] = slow_k
@@ -471,6 +473,7 @@ def ochl2ind(open, close, high, low, volume):
     fast_k, fast_d = STOCHF(high, low, close, 9, 3)
     data['fast_k'] = fast_k
     data['fast_d'] = fast_d
+    print 'kdj'
 
     # dmi
     data['tr'] = TR(high, low, close)
@@ -483,11 +486,13 @@ def ochl2ind(open, close, high, low, volume):
     data['mdi'] = mdi
     data['adx'] = DX(high, low, close, 6)
     data['adxr'] = ADXR(high, low, close, 6)
+    print 'dmi'
     # aroon
-    aroon_up, aroon_down = AROON(high, low, 14)
-    data['aroon_up'] = aroon_up
-    data['aroon_down'] = aroon_down
-    data['aroonosc'] = AROONOSC(high, low, 14)
+    # aroon_up, aroon_down = AROON(high, low, 14)
+    # data['aroon_up'] = aroon_up
+    # data['aroon_down'] = aroon_down
+    # data['aroonosc'] = AROONOSC(high, low, 14)
+    # print 'aroon'
 
     data['emv'] = EMV(high, low, volume, 14)
     data['trix'] = TRIX(close, 14)

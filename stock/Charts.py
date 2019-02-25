@@ -8,6 +8,7 @@ import UsaStore as store
 import Indicators as ind
 import mpl_finance as mpf
 import pandas_datareader.data as web
+import TushareStore
 
 
 def get_chart_data_from_web(code, start_date='', end_date='', append_ind=True):
@@ -424,8 +425,36 @@ def drawPanel(row, col, sector, symbols, start, end):
 # print codes
 #
 
+
+def drawBuyA(row, col, symbols, start, end):
+    fig = plt.figure(figsize=(16, 16))
+    i = 0
+    for symbol in symbols:
+        print symbol
+        i += 1
+        data = TushareStore.get_a_daily_data_ind(table='a_daily', symbol=symbol, start_date=start,
+                                                 end_date=end,
+                                                 append_ind=True)
+        close, pdi, wr, wr_89, bias = data['close'], data['pdi'], data['willr'], data['willr_89'], data['bias']
+
+        ax = fig.add_subplot(row, col, i)
+        ax.plot(close, c='grey')
+        buy = close[ind.LESS_THAN(bias.shift(1), -13) & ind.BOTTOM(bias)]
+        print buy
+        ax.scatter(buy.index, buy, s=20, c='green')
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_ylabel(symbol)
+    plt.legend()
+    plt.subplots_adjust(hspace=1)
+    plt.show()
+
+
 if __name__ == '__main__':
-    df = pd.read_csv('CompanyList_technology_Cor.csv')
-    print df
-    df = df.iloc[0:120]
-    drawBuy(12, 10, 'technology', df.symbol.tolist(), '2018-10-01', '2019-01-21')
+    # df = pd.read_csv('CompanyList_technology_Cor.csv')
+    # print df
+    # df = df.iloc[0:120]
+    symbols = TushareStore.get_a_stock_list('a_daily')
+    symbols = symbols.iloc[:50, :]
+    print symbols
+    drawBuyA(12, 10, symbols['symbol'].tolist(), '2018-10-01', '2019-01-21')

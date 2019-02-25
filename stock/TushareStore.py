@@ -8,7 +8,7 @@ import MySQLdb as db
 import pandas_datareader.data as web
 
 
-# 保存复权因子
+# 保存沪深复权因子
 def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
     pro = ts.pro_api()
@@ -27,7 +27,7 @@ def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
         print 'adj', ts_code
 
 
-# 保存日线
+# 保存沪深日线
 def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
     pro = ts.pro_api()
@@ -54,6 +54,7 @@ def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
     print 'error code list : ', error_code
 
 
+# 获得沪深列表
 def get_basic_stock(start='', end=''):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
     pro = ts.pro_api()
@@ -63,6 +64,7 @@ def get_basic_stock(start='', end=''):
     return stock_basics
 
 
+# 获得沪深日线
 def get_daily_data(type='300', size=0, start_date='', end_date=''):
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     df = pd.read_sql('daily_data_%s' % type, engine)
@@ -129,20 +131,20 @@ def get_chart_data_from_db(code='', start_date='', end_date='', append_ind=True)
 def save_usa_company():
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     company = pd.DataFrame()
-    nasdaq_company = pd.read_csv('CompanyList_NASDAQ.csv')
+    nasdaq_company = pd.read_csv('CompanyList_NASDAQ.data')
 
     nasdaq_company['Exchange'] = 'NASDAQ'
     company = company.append(nasdaq_company)
     nasdaq_company.drop(['Unnamed: 9'], axis=1, inplace=True)
     nasdaq_company.to_sql('usa_company', engine, if_exists='append')
 
-    nyse_company = pd.read_csv('CompanyList_NYSE.csv')
+    nyse_company = pd.read_csv('CompanyList_NYSE.data')
     nyse_company['Exchange'] = 'NYSE'
     nyse_company.drop(['Unnamed: 8'], axis=1, inplace=True)
     nyse_company.to_sql('usa_company', engine, if_exists='append')
     company = company.append(nyse_company)
 
-    amex_company = pd.read_csv('CompanyList_AMEX.csv')
+    amex_company = pd.read_csv('CompanyList_AMEX.data')
     amex_company['Exchange'] = 'AMEX'
     amex_company.drop(['Unnamed: 8'], axis=1, inplace=True)
     amex_company.to_sql('usa_company', engine, if_exists='append')
@@ -243,9 +245,111 @@ def query_by_sql(sql):
     return pd.read_sql(sql, con=con)
 
 
+def save_a_daily_data(start_symbol, end_symbol, start_date, end_date):
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    stock_basics = pro.stock_basic(fields='ts_code,symbol,name')
+    i = 0
+    error_code = []
+    for index, row in stock_basics.iterrows():
+        ts_code = row['ts_code']
+        name = row['name']
+        symbol = row['symbol']
+        i += 1
+        if symbol > end_symbol:
+            continue
+        if symbol < start_symbol:
+            continue
+        try:
+            h_data = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+            h_data = h_data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'close', 'ts_code']]
+            h_data.rename(
+                columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
+            h_data['adj_close'] = 0
+            # print h_data.head(5)
+            h_data.to_sql('a_daily', engine, if_exists='append', index=False)
+            print i, ts_code, name, 'loaded'
+        except:
+            error_code.append(ts_code)
+            print i, ts_code, name, 'load error'
+    print 'error code list : ', error_code
+
+
+def get_daily_data_ind(ts_code='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    if (len(ts_code) > 0) & (not ts_code.isspace()):
+        table_suffixs = [ts_code[0:3]]
+    else:
+        table_suffixs = ['000', '002', '300', '600']
+    df = pd.DataFrame()
+    for table_suffix in table_suffixs:
+        sql = "SELECT ts_code,trade_date,open,close,high,low,vol as volume FROM daily_data_%s where 1=1 " % table_suffix
+        if (len(ts_code) > 0) & (not ts_code.isspace()):
+            sql += "and ts_code = %(ts_code)s "
+        if (len(trade_date) > 0) & (not trade_date.isspace()):
+            sql += "and trade_date = %(trade_date)s "
+        if (len(start_date) > 0) & (not start_date.isspace()):
+            sql += "and trade_date >= %(start_date)s "
+        if (len(end_date) > 0) & (not end_date.isspace()):
+            sql += "and trade_date >= %(end_date)s "
+        sql += "order by trade_date asc "
+        print sql
+        data = pd.read_sql(sql, params={'ts_code': ts_code, 'trade_date': trade_date, 'start_date': start_date,
+                                        'end_date': end_date}, con=con)
+        if append_ind:
+            open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+            ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+            data = data.join(ochl2ind, how='left')
+        df = df.append(data)
+    con.close()
+    return df
+
+
+def get_a_stock_list(table):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT distinct(symbol) FROM " + table + " where 1=1 "
+    return pd.read_sql(sql, con=con)
+
+
+# 查询美股日行情
+def get_a_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM " + table + " where 1=1 "
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    if (len(trade_date) > 0) & (not trade_date.isspace()):
+        sql += "and date = %(date)s "
+    if (len(start_date) > 0) & (not start_date.isspace()):
+        sql += "and date >= %(start_date)s "
+    if (len(end_date) > 0) & (not end_date.isspace()):
+        sql += "and date <= %(end_date)s "
+    sql += "order by symbol asc , date asc "
+    print sql
+    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
+                                    'end_date': end_date}, con=con)
+    print 'load data'
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    df = df.append(data)
+    con.close()
+    return df
+
 
 if __name__ == '__main__':
-    save_usa_company()
+    # date high,low,open,close,volume,adj_close,id,symbol
+
+    # trade_date(date),high,low,open,close,vol(volume),close,id,symbol
+    # a_daliy_300
+    print get_a_stock_list('a_daily')
+    # print get_a_daily_data_ind(table='a_daily', start_date='20180101', end_date='20190125', append_ind=True)
+
+    # save_a_daily_data(start_symbol='300', end_symbol='400', start_date='20180101', end_date='20190125')
+    # save_usa_company()
     # df = get_usa_company(symbol='ASFI')
     # print df[['Symbol', 'Exchange', 'Sector']]
     # df = get_usa_daily_data_ind(symbol=df['Symbol'].values[0])
