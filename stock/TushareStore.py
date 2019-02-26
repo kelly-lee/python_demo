@@ -27,8 +27,24 @@ def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
         print 'adj', ts_code
 
 
-# 保存沪深日线
-def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
+def save_a_daily_all(trade_date):
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    # try:
+    h_data = pro.daily(trade_date=trade_date)
+    h_data = h_data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'ts_code']]
+    h_data.rename(
+        columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
+    h_data['adj_close'] = 0
+    # print h_data.head(5)
+    h_data.to_sql('a_daily', engine, if_exists='append', index=False)
+    print 'loaded'
+    # except:
+    #     print 'loaded error'
+
+
+def save_a_daily_data(start_symbol, end_symbol, start_date, end_date):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
     pro = ts.pro_api()
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
@@ -45,13 +61,63 @@ def save_daily_data(start_symbol='000', end_symbol='601', trade_date=''):
         if symbol < start_symbol:
             continue
         try:
-            h_data = pro.daily(ts_code=ts_code, trade_date=trade_date)
-            h_data.to_sql('daily_data', engine, if_exists='append')
+            h_data = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
+            h_data = h_data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'ts_code']]
+            h_data.rename(
+                columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
+            h_data['adj_close'] = 0
+            # print h_data.head(5)
+            h_data.to_sql('a_daily', engine, if_exists='append', index=False)
             print i, ts_code, name, 'loaded'
         except:
             error_code.append(ts_code)
             print i, ts_code, name, 'load error'
     print 'error code list : ', error_code
+
+
+def get_a_stock_list(table):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT distinct(symbol) FROM " + table + " where 1=1 "
+    return pd.read_sql(sql, con=con)
+
+
+def save_a_daily_data_ind():
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    symbols = get_a_stock_list('a_daily')
+    for symbol in symbols['symbol'].tolist():
+        data = get_a_daily_data_ind(table='a_daily', symbol=symbol, start_date='',
+                                    end_date='',
+                                    append_ind=True)
+        data = data[['symbol', 'date', 'close', 'pdi', 'willr', 'willr_89', 'bias']]
+        data.to_sql('a_daily_ind', engine, if_exists='append', index=False)
+        print symbol, 'loaded'
+
+
+def get_a_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM " + table + " where 1=1 "
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    if (len(trade_date) > 0) & (not trade_date.isspace()):
+        sql += "and date = %(date)s "
+    if (len(start_date) > 0) & (not start_date.isspace()):
+        sql += "and date >= %(start_date)s "
+    if (len(end_date) > 0) & (not end_date.isspace()):
+        sql += "and date <= %(end_date)s "
+    sql += "order by symbol asc , date asc "
+    print sql
+    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
+                                    'end_date': end_date}, con=con)
+    print 'load data'
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    df = df.append(data)
+    con.close()
+    return df
 
 
 # 获得沪深列表
@@ -245,37 +311,6 @@ def query_by_sql(sql):
     return pd.read_sql(sql, con=con)
 
 
-def save_a_daily_data(start_symbol, end_symbol, start_date, end_date):
-    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
-    pro = ts.pro_api()
-    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    stock_basics = pro.stock_basic(fields='ts_code,symbol,name')
-    i = 0
-    error_code = []
-    for index, row in stock_basics.iterrows():
-        ts_code = row['ts_code']
-        name = row['name']
-        symbol = row['symbol']
-        i += 1
-        if symbol > end_symbol:
-            continue
-        if symbol < start_symbol:
-            continue
-        try:
-            h_data = pro.daily(ts_code=ts_code, start_date=start_date, end_date=end_date)
-            h_data = h_data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'close', 'ts_code']]
-            h_data.rename(
-                columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
-            h_data['adj_close'] = 0
-            # print h_data.head(5)
-            h_data.to_sql('a_daily', engine, if_exists='append', index=False)
-            print i, ts_code, name, 'loaded'
-        except:
-            error_code.append(ts_code)
-            print i, ts_code, name, 'load error'
-    print 'error code list : ', error_code
-
-
 def get_daily_data_ind(ts_code='', trade_date='', start_date='', end_date='', append_ind=False):
     con = db.connect('localhost', 'root', 'root', 'stock')
     if (len(ts_code) > 0) & (not ts_code.isspace()):
@@ -306,49 +341,16 @@ def get_daily_data_ind(ts_code='', trade_date='', start_date='', end_date='', ap
     return df
 
 
-def get_a_stock_list(table):
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    df = pd.DataFrame()
-    sql = "SELECT distinct(symbol) FROM " + table + " where 1=1 "
-    return pd.read_sql(sql, con=con)
-
-
-# 查询美股日行情
-def get_a_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    df = pd.DataFrame()
-    sql = "SELECT symbol,date,open,close,adj_close,high,low,volume FROM " + table + " where 1=1 "
-    if (len(symbol) > 0) & (not symbol.isspace()):
-        sql += "and symbol = %(symbol)s "
-    if (len(trade_date) > 0) & (not trade_date.isspace()):
-        sql += "and date = %(date)s "
-    if (len(start_date) > 0) & (not start_date.isspace()):
-        sql += "and date >= %(start_date)s "
-    if (len(end_date) > 0) & (not end_date.isspace()):
-        sql += "and date <= %(end_date)s "
-    sql += "order by symbol asc , date asc "
-    print sql
-    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
-                                    'end_date': end_date}, con=con)
-    print 'load data'
-    if append_ind:
-        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
-        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
-        data = data.join(ochl2ind, how='left')
-    df = df.append(data)
-    con.close()
-    return df
-
-
 if __name__ == '__main__':
     # date high,low,open,close,volume,adj_close,id,symbol
 
     # trade_date(date),high,low,open,close,vol(volume),close,id,symbol
     # a_daliy_300
-    print get_a_stock_list('a_daily')
+    # print get_a_stock_list('a_daily')
     # print get_a_daily_data_ind(table='a_daily', start_date='20180101', end_date='20190125', append_ind=True)
-
-    # save_a_daily_data(start_symbol='300', end_symbol='400', start_date='20180101', end_date='20190125')
+    # save_a_daily_all(trade_date='20190226')
+    save_a_daily_data_ind()
+    # save_a_daily_data(start_symbol='000', end_symbol='700', start_date='20190225', end_date='20190226')
     # save_usa_company()
     # df = get_usa_company(symbol='ASFI')
     # print df[['Symbol', 'Exchange', 'Sector']]
