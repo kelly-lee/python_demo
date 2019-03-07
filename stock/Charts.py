@@ -401,8 +401,7 @@ def drawPanel(row, col, sector, symbols, start, end):
         ax.set_yticks([])
         ax = ax.twinx()
         ax.plot(nasdaq['Adj Close'], color='grey')
-        ax.set_xticks([])
-        ax.set_yticks([])
+
     plt.show()
 
 
@@ -436,11 +435,11 @@ def drawBuyA(row, col, symbols, start, end):
                                                  end_date=end,
                                                  append_ind=True)
         close, pdi, wr, wr_89, bias = data['close'], data['pdi'], data['willr'], data['willr_89'], data['bias']
-
         ax = fig.add_subplot(row, col, i)
         ax.plot(close, c='grey')
-        buy = close[ind.LESS_THAN(bias.shift(1), -13) & ind.BOTTOM(bias)]
-        print buy
+        # buy = close[ind.LESS_THAN(bias.shift(1), -13) & ind.BOTTOM(bias)]
+        buy = close[ind.LESS_THAN(wr.shift(1), -88) & ind.BOTTOM(wr)]
+        # print buy
         ax.scatter(buy.index, buy, s=20, c='green')
         ax.set_xticks([])
         ax.set_yticks([])
@@ -455,6 +454,6 @@ if __name__ == '__main__':
     # print df
     # df = df.iloc[0:120]
     symbols = TushareStore.get_a_stock_list('a_daily')
-    symbols = symbols.iloc[:50, :]
+    symbols = symbols.iloc[:120, :]
     print symbols
-    drawBuyA(12, 10, symbols['symbol'].tolist(), '2018-10-01', '2019-01-21')
+    drawBuyA(12, 10, symbols['symbol'].tolist(), '2018-10-01', '2019-02-26')

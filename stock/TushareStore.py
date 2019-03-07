@@ -82,13 +82,12 @@ def get_a_stock_list(table):
     return pd.read_sql(sql, con=con)
 
 
-def save_a_daily_data_ind():
+def save_a_daily_data_ind(start_date, end_date):
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     symbols = get_a_stock_list('a_daily')
     for symbol in symbols['symbol'].tolist():
-        data = get_a_daily_data_ind(table='a_daily', symbol=symbol, start_date='',
-                                    end_date='',
-                                    append_ind=True)
+        data = get_a_daily_data_ind(table='a_daily', symbol=symbol, start_date=start_date,
+                                    end_date=end_date, append_ind=True)
         data = data[['symbol', 'date', 'close', 'pdi', 'willr', 'willr_89', 'bias']]
         data.to_sql('a_daily_ind', engine, if_exists='append', index=False)
         print symbol, 'loaded'
@@ -341,22 +340,62 @@ def get_daily_data_ind(ts_code='', trade_date='', start_date='', end_date='', ap
     return df
 
 
-if __name__ == '__main__':
-    # date high,low,open,close,volume,adj_close,id,symbol
+import matplotlib.pyplot as plt
 
+
+def get_a_daily_data_ind_all():
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    sql = """
+    select * from a_daily_ind 
+    """
+    df = pd.read_sql(sql, con=con)
+    df['date'] = df['date'].astype(str)
+    df.index = df['date']
+    df.drop(columns=['date'], inplace=True)
+    row = 7
+    col = 4
+    fig = plt.figure(figsize=(16, 16))
+    i = 1
+    for date in df.index[-20:]:
+        print date
+        ax = fig.add_subplot(row, col, i)
+        i = i + 1
+        # print df.loc['2019-02-' + i, 'willr'].describe()
+        # data = df.groupby(by='date').mean()
+        # print data.head(5)
+        # ax = plt.axes()
+        w = df.loc[date, 'willr']
+        w = w.sort_values()
+        w.index = np.arange(1, len(w) + 1)
+        ax.bar(w.index, w)
+        # ax.plot(data['willr'])
+        # ax.plot(data['willr_89'])
+        # ax = plt.twinx()
+        # ax.plot(data['bias'], c='green')
+    plt.show()
+
+
+if __name__ == '__main__':
+    # get_a_daily_data_ind_all()
+
+    # save_a_daily_all(trade_date='20190307')
+    save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-07')
+
+    # date high,low,open,close,volume,adj_close,id,symbol
+    #
     # trade_date(date),high,low,open,close,vol(volume),close,id,symbol
     # a_daliy_300
-    # print get_a_stock_list('a_daily')
-    # print get_a_daily_data_ind(table='a_daily', start_date='20180101', end_date='20190125', append_ind=True)
-    # save_a_daily_all(trade_date='20190226')
-    save_a_daily_data_ind()
-    # save_a_daily_data(start_symbol='000', end_symbol='700', start_date='20190225', end_date='20190226')
-    # save_usa_company()
-    # df = get_usa_company(symbol='ASFI')
-    # print df[['Symbol', 'Exchange', 'Sector']]
+    #     print get_a_stock_list('a_daily')
+    #     print get_a_daily_data_ind(table='a_daily', start_date='20180101', end_date='20190125', append_ind=True)
+
+    #     save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-02-27')
+    #     save_a_daily_data(start_symbol='000', end_symbol='700', start_date='20190225', end_date='20190226')
+    #     save_usa_company()
+    #     df = get_usa_company(symbol='ASFI')
+    #     print df[['Symbol', 'Exchange', 'Sector']]
     # df = get_usa_daily_data_ind(symbol=df['Symbol'].values[0])
     # print df
     # print df.groupby(['Sector'])['id'].count()
-
+    #
     # df = get_usa_company()
     # print df.groupby(['Sector'])['id'].count()
