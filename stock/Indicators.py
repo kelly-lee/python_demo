@@ -400,6 +400,7 @@ def BIAS(price, time_period=24):
     man = SMA(price, time_period)
     return (price - man) / man * 100
 
+
 ###########################################################################
 
 
@@ -433,9 +434,6 @@ def AR(high, low, open, time_period):
     high_sum = SUM(high.time_period)
     low_sum = SUM(low.time_period)
     return (high_sum - open_sum) / (open_sum - low_sum)
-
-
-
 
 
 def ochl2ind(open, close, high, low, volume):
@@ -499,13 +497,13 @@ def ochl2ind(open, close, high, low, volume):
     data['cci'] = CCI(high, low, close, 14)
     data['rsi'] = RSI(close, 14)
     data['mfi'] = MFI(high, low, close, volume, 14)
-    data['willr'] = WILLR(high, low, close, 14)
+    data['willr'] = WILLR(high, low, close, 6)
+    data['willr_34'] = WILLR(high, low, close, 34)
     data['willr_89'] = WILLR(high, low, close, 89)
     data['obv'] = OBV(close, volume)
     data['vol_roc'] = ROC(volume)
     data['roc'] = ROC(close, 6)
     # min,max
     data['bias'] = BIAS(close, 24)
-
     data['c_min'] = close - MIN(close, 10)
     return data
