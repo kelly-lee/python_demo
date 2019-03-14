@@ -201,41 +201,45 @@ def get_a_daily_data_ind_all():
 
 
 def get_buy():
-    fig = plt.figure(figsize=(16, 16))
+    fig = plt.figure(figsize=(16, 6))
     sql = """
-        select symbol from a_daily_ind where willr <-88 and date = '2019-03-08'
+        select * from a_daily_ind where willr <-88 and date = '2019-03-12' order by bias limit 0,20
         """
     df = query_by_sql(sql)
     print df['symbol'].tolist()
-    row = 15
-    col = 6
+    row =4
+    col = 5
     i = 1
     for symbol in df['symbol'].tolist():
         data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2018-10-01',
-                                    end_date='2019-03-08', append_ind=False)
-        close, willr, willr_34, willr_89, bias, pdi = data['close'], data['willr'], data['willr_34'], data['willr_89'],
-        data['bias'], data['pdi']
-    ax = fig.add_subplot(row, col, i)
-    ax.plot(close, c='grey')
-    ax.set_ylabel(symbol)
-    ax = plt.twinx()
-    ax.plot(willr)
-    ax.plot(willr_34)
-    ax.plot(willr_89)
+                                    end_date='2019-03-12', append_ind=False)
+        print data.head()
+        close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
+        bias, pdi = data['bias'], data['pdi']
 
-    i = i + 1
+        ax = fig.add_subplot(row, col, i)
+        ax.plot(bias, c='grey')
+        ax.set_ylabel(symbol)
+        ax = plt.twinx()
+        ax.plot(willr)
+        ax.plot(willr_34)
+        ax.plot(willr_89)
 
 
-plt.legend()
-plt.subplots_adjust(hspace=1)
-plt.show()
+        i = i + 1
+
+
+    plt.legend()
+    plt.subplots_adjust(hspace=1)
+    plt.show()
 
 if __name__ == '__main__':
-    # get_buy()
+
+    get_buy()
     # get_a_daily_data_ind_all()
 
-    # save_a_daily_all(trade_date='20190311')
-    save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-11')
+    # save_a_daily_all(trade_date='20190313')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-13')
 
     # date high,low,open,close,volume,adj_close,id,symbol
     #
