@@ -39,7 +39,7 @@ def merge_and_save_usa_company_list():
         columns={"Symbol": "symbol", "Name": "name", "MarketCap": "market_cap", "IPOyear": "ipo_year",
                  "Sector": "sector",
                  "Industry": "industry"}, inplace=True)
-    amex.drop(amex.columns[- 1], inplace=True, axis=1)
+    amex.drop(amex.columns[-1], inplace=True, axis=1)
     amex['exchange'] = 'AMEX'
     nasdaq = pd.read_csv('CompanyList_NASDAQ.csv')
     nasdaq.drop(["LastSale", "Summary Quote", "ADR TSO"], inplace=True, axis=1)
