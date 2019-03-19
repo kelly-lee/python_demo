@@ -201,27 +201,21 @@ def get_a_daily_data_ind_all():
     plt.show()
 
 
-def get_buy():
-    fig = plt.figure(figsize=(16, 6))
-    sql = """
-           select symbol from a_daily_ind 
-            where date = '20190318' and bias >=3 and bias<=19 and willr_89 >=-28 and willr_89<=2
-            order by willr asc limit 0,100
-        """
-    df = query_by_sql(sql)
-    print df['symbol'].tolist()
-    row = 10
-    col = 10
-    show(row, col, df['symbol'].tolist())
+#
+def get_buy(sql, row, col):
+    size = row * col
+    sql = sql + " limit 0," + size
+    show(row, col, get_symbols(sql))
 
 
+# 根据股票代码显示股价
 def show(row, col, symbols):
     fig = plt.figure(figsize=(16, 8))
 
     i = 1
     for symbol in symbols:
-        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
-                                    end_date='2019-03-18', append_ind=False)
+        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2018-01-01',
+                                    end_date='2019-03-19', append_ind=False)
         data['pct'] = data['close'].pct_change()
         print data.tail()
         close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
@@ -229,16 +223,12 @@ def show(row, col, symbols):
 
         ax = fig.add_subplot(row, col, i)
         # ax.plot(bias, c='grey')
-        ax.plot(close, c='grey')
-        ax.plot(ind.MAX(close, 10), c='grey')
-        ax.plot(ind.MIN(close, 10), c='grey')
-        ax.set_xticks([])
-        ax.set_yticks([])
         buy = close[
             # ind.LESS_THAN(bias.shift(1), -3) & ind.BOTTOM(bias) &
             ind.GREAT_THAN(bias, 3)
             & ind.GREAT_THAN(willr_89, -28)
-            & ind.LESS_THAN(willr, -50)
+            # & ind.GREAT_THAN(willr, -40)
+            & ind.LESS_THAN(willr, -70)
             # & ind.LESS_THAN(bias.shift(), 3)
             # & ind.BOTTOM(willr)
             # & ind.LESS_THAN(willr_34.shift(1), -88)
@@ -246,15 +236,22 @@ def show(row, col, symbols):
             # & ind.LESS_THAN(willr_89.shift(1), -88)
             # & ind.BOTTOM(willr_89)
             ]
+        ax.scatter(buy.index, buy, s=20, c='green')
+        ax.plot(close, c='grey')
+        # ax.plot(ind.MAX(close, 10), c='grey')
+        # ax.plot(ind.MIN(close, 10), c='grey')
+        ax.set_xticks([])
+        ax.set_yticks([])
+
         # print buy
-        ax.scatter(buy.index, buy, s=10, c='green')
+
         ax.set_ylabel(symbol)
         ax = plt.twinx()
         ax.set_xticks([])
         ax.set_yticks([])
         # ax.plot(bias)
 
-        # ax.plot(willr)
+        ax.plot(willr)
         # ax.plot(willr_34)
         # ax.plot(willr_89)
 
@@ -265,56 +262,69 @@ def show(row, col, symbols):
     plt.show()
 
 
-def get_symbols(sql):
+# 根据sql查询符合条件的股票代码
+def get_symbols(sql=''):
+    if (len(sql) == 0) | (sql.isspace()):
+        sql = "select distinct(symbol) from a_daily order by symbol asc"
     return query_by_sql(sql)['symbol'].tolist()
 
 
+# 统计配置股票涨幅频率
 def pct():
-    sql = """
-          select distinct(symbol) from a_daily order by symbol asc
-          """
-    symbols = query_by_sql(sql)
-    symbols = symbols['symbol'].tolist()
-    aa = pd.DataFrame()
-    i = 0
+    symbols = get_symbols()
+    data = pd.DataFrame()
+    # i = 0
     for symbol in symbols:
-        # if (symbol != '300216.SZ'):
-        #     continue
+        # i = i + 1
+        # if i > 5:
+        #     break
         sql = "select * from a_daily where symbol = '" + symbol + "' order by date asc"
         df = query_by_sql(sql)
-
         df['pct'] = df['close'].pct_change() * 100
-        # print df
-        # print df.sort_values(['pct'], ascending=False).head(20)
-        c5 = len(df[df['pct'] > 5])
-        c6 = len(df[df['pct'] > 6])
-        c7 = len(df[df['pct'] > 7])
-        c8 = len(df[df['pct'] > 8])
-        c9 = len(df[df['pct'] > 9])
-        print symbol, c8, c9
-        aa = aa.append(pd.DataFrame([[symbol, c5, c6, c7, c8, c9]]))
-    aa.to_csv("aa.cvs")
-    print aa
+        p5 = len(df[df['pct'] > 5])
+        p6 = len(df[df['pct'] > 6])
+        p7 = len(df[df['pct'] > 7])
+        p8 = len(df[df['pct'] > 8])
+        p9 = len(df[df['pct'] > 9])
+        s5 = len(df[df['pct'] < -5])
+        s6 = len(df[df['pct'] < -6])
+        s7 = len(df[df['pct'] < -7])
+        s8 = len(df[df['pct'] < -8])
+        s9 = len(df[df['pct'] < -9])
+        print symbol
+        p8 = p8 - p9
+        p7 = p7 - p8
+        p6 = p6 - p7
+        p5 = p5 - p6
+        s8 = s8 - s9
+        s7 = s7 - s8
+        s6 = s6 - s7
+        s5 = s5 - s6
+        data = data.append(pd.DataFrame([[symbol, p5, p6, p7, p8, p9, s5, s6, s7, s8, s9]],
+                                        columns=['symbol', 'p5', 'p6', 'p7', 'p8', 'p9', 's5', 's6', 's7', 's8', 's9']))
+        data.to_csv("pct_data.cvs")
 
 
 def high():
-    sql = """
-          select distinct(symbol) from a_daily_ind order by symbol asc
-          """
-    symbols = query_by_sql(sql)
-    symbols = symbols['symbol'].tolist()
-    bb = pd.DataFrame()
-    i = 0
+    symbols = get_symbols()
+    data = pd.DataFrame()
     for symbol in symbols:
         sql = "select * from a_daily_ind where symbol = '" + symbol + "' order by date asc"
         df = query_by_sql(sql)
-
         df['pct'] = df['close'].pct_change() * 100
-        print df[df['pct'].shift(-1) > 9]
+        data = data.append(df[df['pct'].shift(-1) > 9])
+    data.to_csv("high_data.cvs")
 
-        bb = bb.append(df[df['pct'].shift(-1) > 9])
-    bb.to_csv("bb.cvs")
-    print bb
+
+def low():
+    symbols = get_symbols()
+    data = pd.DataFrame()
+    for symbol in symbols:
+        sql = "select * from a_daily_ind where symbol = '" + symbol + "' order by date asc"
+        df = query_by_sql(sql)
+        df['pct'] = df['close'].pct_change() * 100
+        data = data.append(df[df['pct'].shift(-1) < -9])
+    data.to_csv("low_data.cvs")
 
 
 def hot():
@@ -328,54 +338,61 @@ def hot():
 
 # bias -3,3~19,29
 # willr_89 -36 -28  -2 0
+
 if __name__ == '__main__':
-    get_buy()
-    # bb = pd.read_csv('bb.cvs')
-    # #
-    # # print bb.describe()[['willr', 'willr_34', 'willr_89', 'bias']]
-    # bb = bb.sort_values(['willr_89'], ascending=True)
-    # # plt.scatter(bb.index, bb['willr'])
-    # # print bb['willr']
-    # cc = bb['willr_89'].dropna()
-    # print cc.describe()
-    # plt.hist(cc, bins=50)
-    # plt.show()
-    # high()
-    # row = 6
-    # col = 4
-    # size = row * col
-    # symbols = get_symbols("select distinct(symbol) from a_daily_ind where willr <-88  and date = '2019-03-18' order by bias limit 0," + str(size))
-    # show(row, col, symbols[0:size])
-    # aa = pd.read_csv('aa.cvs')
-    # print len(aa), len(aa[aa['5'] > 0]), len(aa[aa['5'] > 5]), len(aa[aa['5'] > 10]), len(aa[aa['5'] > 15]), len(
-    #     aa[aa['5'] > 20])
-    # print len(aa), len(aa[aa['1'] > 0]), len(aa[aa['1'] > 5]), len(aa[aa['1'] > 10]), len(aa[aa['1'] > 15]), len(
-    #     aa[aa['1'] > 20])
-    # print aa.describe().T
-    # print aa.sort_values(['5'], ascending=False)
-    # aa = aa[aa['1'] > 30]
-    # print aa['0'].tolist()
-    #
-    # symbols = aa['0'].tolist()
-    # print len(symbols)
-    # row = 6
-    # col = 4
-    # show(row, col, symbols[0:row * col])
+    pct()
+# save_a_daily_all(trade_date='20190319')
+# save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-19')
+# low()
+# get_buy()
+# datas = []
+# # datas.append(query_by_sql("select * from a_daily_ind"))
+# datas.append(pd.read_csv('bb.cvs'))
+# datas.append(pd.read_csv('cc.cvs'))
+# colors = ['red', 'blue', 'yellow']
+# i = 0
+# for data in datas:
+#     data = data.sort_values(['willr_89'], ascending=True)
+#     data = data['willr_89'].dropna()
+#     plt.hist(data, facecolor=colors[i], bins=50)
+#     i = i + 1
+#     # print data.describe()[['willr', 'willr_34', 'willr_89', 'bias']]
+# plt.show()
 
-    # pct()
-    # df = df[df['pct'] > 5]
-    # print df.count()
-    # df = df.sort_values(['symbol'], ascending=True, inplace=False)
-    # print df
-    # pc = df.groupby(['symbol']).size()
-    # print pc.sort_values(ascending=False, inplace=False)
+# high()
+# row = 6
+# col = 4
+# size = row * col
+# symbols = get_symbols("select distinct(symbol) from a_daily_ind where willr <-88  and date = '2019-03-18' order by bias limit 0," + str(size))
+# show(row, col, symbols[0:size])
+# aa = pd.read_csv('aa.cvs')
+# print len(aa), len(aa[aa['5'] > 0]), len(aa[aa['5'] > 5]), len(aa[aa['5'] > 10]), len(aa[aa['5'] > 15]), len(
+#     aa[aa['5'] > 20])
+# print len(aa), len(aa[aa['1'] > 0]), len(aa[aa['1'] > 5]), len(aa[aa['1'] > 10]), len(aa[aa['1'] > 15]), len(
+#     aa[aa['1'] > 20])
+# print aa.describe().T
+# print aa.sort_values(['5'], ascending=False)
+# aa = aa[aa['1'] > 30]
+# print aa['0'].tolist()
+#
+# symbols = aa['0'].tolist()
+# print len(symbols)
+# row = 6
+# col = 4
+# show(row, col, symbols[0:row * col])
 
-    # print df.info()
-    # print df[['symbol','close','pct']]
-    # abc = df.groupby(['symbol', 'pct']).size().unstack()
-    # print abc
+# pct()
+# df = df[df['pct'] > 5]
+# print df.count()
+# df = df.sort_values(['symbol'], ascending=True, inplace=False)
+# print df
+# pc = df.groupby(['symbol']).size()
+# print pc.sort_values(ascending=False, inplace=False)
 
-    # get_buy()
-    # get_a_daily_data_ind_all()
-    # save_a_daily_all(trade_date='20190318')
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-18')
+# print df.info()
+# print df[['symbol','close','pct']]
+# abc = df.groupby(['symbol', 'pct']).size().unstack()
+# print abc
+
+# get_buy()
+# get_a_daily_data_ind_all()
