@@ -204,12 +204,14 @@ def get_a_daily_data_ind_all():
 def get_buy():
     fig = plt.figure(figsize=(16, 6))
     sql = """
-            select * from a_daily_ind  where willr_89<-10  and date = '20190314' order by willr_89 limit 0,20
+           select symbol from a_daily_ind 
+            where date = '20190318' and bias >=3 and bias<=19 and willr_89 >=-28 and willr_89<=2
+            order by willr asc limit 0,100
         """
     df = query_by_sql(sql)
     print df['symbol'].tolist()
-    row = 4
-    col = 5
+    row = 10
+    col = 10
     show(row, col, df['symbol'].tolist())
 
 
@@ -218,7 +220,7 @@ def show(row, col, symbols):
 
     i = 1
     for symbol in symbols:
-        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2018-10-01',
+        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
                                     end_date='2019-03-18', append_ind=False)
         data['pct'] = data['close'].pct_change()
         print data.tail()
@@ -228,11 +230,18 @@ def show(row, col, symbols):
         ax = fig.add_subplot(row, col, i)
         # ax.plot(bias, c='grey')
         ax.plot(close, c='grey')
+        ax.plot(ind.MAX(close, 10), c='grey')
+        ax.plot(ind.MIN(close, 10), c='grey')
+        ax.set_xticks([])
+        ax.set_yticks([])
         buy = close[
             # ind.LESS_THAN(bias.shift(1), -3) & ind.BOTTOM(bias) &
-            ind.LESS_THAN(willr.shift(1), -88)
+            ind.GREAT_THAN(bias, 3)
+            & ind.GREAT_THAN(willr_89, -28)
+            & ind.LESS_THAN(willr, -50)
+            # & ind.LESS_THAN(bias.shift(), 3)
             # & ind.BOTTOM(willr)
-            & ind.LESS_THAN(willr_34.shift(1), -88)
+            # & ind.LESS_THAN(willr_34.shift(1), -88)
             # & ind.BOTTOM(willr_34)
             # & ind.LESS_THAN(willr_89.shift(1), -88)
             # & ind.BOTTOM(willr_89)
@@ -241,6 +250,8 @@ def show(row, col, symbols):
         ax.scatter(buy.index, buy, s=10, c='green')
         ax.set_ylabel(symbol)
         ax = plt.twinx()
+        ax.set_xticks([])
+        ax.set_yticks([])
         # ax.plot(bias)
 
         # ax.plot(willr)
@@ -315,17 +326,20 @@ def hot():
     show(row, col, symbols[0:row * col])
 
 
+# bias -3,3~19,29
+# willr_89 -36 -28  -2 0
 if __name__ == '__main__':
-    bb = pd.read_csv('bb.cvs')
-
-    print bb.describe()[['willr', 'willr_34', 'willr_89', 'bias']]
-    bb = bb.sort_values(['bias'], ascending=True)
-    # plt.scatter(bb.index, bb['willr'])
-    # bb.dropna
-    # print bb['willr']
-    cc = bb['bias'].dropna()
-    plt.hist(cc, bins=50)
-    plt.show()
+    get_buy()
+    # bb = pd.read_csv('bb.cvs')
+    # #
+    # # print bb.describe()[['willr', 'willr_34', 'willr_89', 'bias']]
+    # bb = bb.sort_values(['willr_89'], ascending=True)
+    # # plt.scatter(bb.index, bb['willr'])
+    # # print bb['willr']
+    # cc = bb['willr_89'].dropna()
+    # print cc.describe()
+    # plt.hist(cc, bins=50)
+    # plt.show()
     # high()
     # row = 6
     # col = 4
