@@ -1,0 +1,61 @@
+
+    # symbols = get_symbols()
+    # data = pd.DataFrame()
+    # i = 0
+    # for symbol in symbols:
+    #     # i = i + 1
+    #     # if i > 100:
+    #     #     break
+    #     sql = "select * from a_daily_ind where symbol = '" + symbol + "' order by date asc"
+    #     df = query_by_sql(sql)
+    #     df['pct'] = df['close'].pct_change() * 100
+    #     df['pct_nxt'] = df['pct'].shift(-1)
+    #     data = data.append(df)
+    #     print symbol
+    # print len(data)
+    # data = data.dropna()
+    # print len(data)
+    # data.to_csv('stock.csv')
+    # -10~15
+    data = pd.read_csv('stock.csv')
+    data = data.dropna()
+    # data = data[data['willr_34']<-70]
+    data['dif'] = data['willr_34'] - data['willr']
+    print data['dif'].describe()
+    pct_nxt = data['pct_nxt']
+    print pct_nxt.head()
+    pct_nxt = pct_nxt.where(pct_nxt < 0, 1)
+    pct_nxt = pct_nxt.where(pct_nxt > 0, 0)
+    print pct_nxt.head()
+    # data2 = data[(data['willr_89'] > -20) & (data['willr'] < -85) & (data['willr_34'] < -30)]
+    # data2 = data[(data['willr'] < -85) & (data['willr_34'] < -85)]
+
+
+    # plt.scatter(data['pct_nxt'], data['willr'], s=0.1)
+    # plt.scatter(data2['pct_nxt'], data2['willr_89'], s=0.1)
+    # plt.vlines(0, -100, 0, color='red', linestyle="--", linewidth=1)
+    # plt.show()
+
+    X = data[["willr", "willr_34", "willr_89", "pdi", "bias"]]
+    Y = pct_nxt
+    Xtrain, Xtest, Ytrain, Ytest = train_test_split(X, Y, test_size=0.3)
+    clf = tree.tree.DecisionTreeClassifier(max_depth=3
+                                      , criterion="gini"
+                                      , random_state=100
+                                      , splitter="best"
+
+                                      )
+
+    clf2 = xgb.XGBClassifier(n_estimators=50, max_depth=1,
+                             learning_rate=0.01, subsample=0.8, colsample_bytree=0.3, scale_pos_weight=3.0,
+                             silent=True, nthread=-1, seed=0, missing=None, objective='binary:logistic',
+                             reg_alpha=1, reg_lambda=1,
+                             gamma=0, min_child_weight=1,
+                             max_delta_step=0, base_score=0.5)
+    clf2.fit(Xtrain, Ytrain)
+    score1 = clf2.score(Xtest, Ytest)
+    feature_importance = clf2.feature_importances_
+    feature_importance = pd.Series(data=feature_importance[np.argsort(feature_importance)],
+                                   index=X.columns[np.argsort(feature_importance)])
+    print feature_importance
+    print score1
