@@ -201,10 +201,9 @@ def get_a_daily_data_ind_all():
     plt.show()
 
 
-#
 def get_buy(sql, row, col):
     size = row * col
-    sql = sql + " limit 0," + size
+    sql = sql + " limit 0," + str(size)
     show(row, col, get_symbols(sql))
 
 
@@ -214,8 +213,8 @@ def show(row, col, symbols):
 
     i = 1
     for symbol in symbols:
-        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2018-01-01',
-                                    end_date='2019-03-19', append_ind=False)
+        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
+                                    end_date='2019-03-30', append_ind=False)
         data['pct'] = data['close'].pct_change()
         print data.tail()
         close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
@@ -224,11 +223,14 @@ def show(row, col, symbols):
         ax = fig.add_subplot(row, col, i)
         # ax.plot(bias, c='grey')
         buy = close[
+            ind.LESS_THAN(willr, -88) &
+            ind.LESS_THAN(willr_34, -88)
+            # ind.GREAT_THAN(bias, 3)
+            # & ind.GREAT_THAN(willr_89, -28)
+            # & ind.LESS_THAN(willr, -70)
+
             # ind.LESS_THAN(bias.shift(1), -3) & ind.BOTTOM(bias) &
-            ind.GREAT_THAN(bias, 3)
-            & ind.GREAT_THAN(willr_89, -28)
             # & ind.GREAT_THAN(willr, -40)
-            & ind.LESS_THAN(willr, -70)
             # & ind.LESS_THAN(bias.shift(), 3)
             # & ind.BOTTOM(willr)
             # & ind.LESS_THAN(willr_34.shift(1), -88)
@@ -251,7 +253,7 @@ def show(row, col, symbols):
         ax.set_yticks([])
         # ax.plot(bias)
 
-        ax.plot(willr)
+        # ax.plot(willr)
         # ax.plot(willr_34)
         # ax.plot(willr_89)
 
@@ -340,9 +342,10 @@ def hot():
 # willr_89 -36 -28  -2 0
 
 if __name__ == '__main__':
-    pct()
-# save_a_daily_all(trade_date='20190319')
-# save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-19')
+    get_buy("select distinct(symbol) from a_daily_ind where willr<-88 and willr_34<-88 and date = '2019-03-25'", 5, 5)
+    # pct()
+    # save_a_daily_all(trade_date='20190327')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-27')
 # low()
 # get_buy()
 # datas = []
