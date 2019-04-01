@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 import tushare as ts
 import pandas as pd
 from sqlalchemy import create_engine
@@ -8,6 +14,9 @@ import MySQLdb as db
 import pandas_datareader.data as web
 import matplotlib.pyplot as plt
 import Indicators as ind
+from sklearn import tree
+from sklearn.model_selection import train_test_split
+import xgboost as xgb
 
 
 # 保存沪深复权因子
@@ -201,10 +210,14 @@ def get_a_daily_data_ind_all():
     plt.show()
 
 
+#
 def get_buy(sql, row, col):
     size = row * col
     sql = sql + " limit 0," + str(size)
     show(row, col, get_symbols(sql))
+
+
+from sklearn.preprocessing import MinMaxScaler
 
 
 # 根据股票代码显示股价
@@ -212,15 +225,27 @@ def show(row, col, symbols):
     fig = plt.figure(figsize=(16, 8))
 
     i = 1
+
+    top = pd.DataFrame()
     for symbol in symbols:
         data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
                                     end_date='2019-03-30', append_ind=False)
-        data['pct'] = data['close'].pct_change()
-        print data.tail()
+        data['pct'] = data['close'].pct_change() * 100
+        data['pct_sum'] = data['pct'].cumsum()
+
+        if (data['pct_sum'].max() < 65):
+            continue
+        if (data['pct_sum'].max() > 75):
+            continue
+        print symbol, data['pct_sum'].max()
+        top = top.append(pd.DataFrame([[data['pct_sum'].max()]], index=[symbol]))
+        # print data.head()
         close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
         bias, pdi = data['bias'], data['pdi']
 
         ax = fig.add_subplot(row, col, i)
+        # ax = fig.add_subplot(1, 1, 1)
+
         # ax.plot(bias, c='grey')
         buy = close[
             ind.LESS_THAN(willr, -88) &
@@ -238,16 +263,19 @@ def show(row, col, symbols):
             # & ind.LESS_THAN(willr_89.shift(1), -88)
             # & ind.BOTTOM(willr_89)
             ]
-        ax.scatter(buy.index, buy, s=20, c='green')
-        ax.plot(close, c='grey')
+        # ax.scatter(buy.index, buy, s=20, c='green')
+        scaler = MinMaxScaler()
+        data['c'] = scaler.fit_transform(close.values.reshape(-1, 1))
+
+        ax.plot(data['pct_sum'])
         # ax.plot(ind.MAX(close, 10), c='grey')
         # ax.plot(ind.MIN(close, 10), c='grey')
-        ax.set_xticks([])
-        ax.set_yticks([])
-
-        # print buy
-
+        # ax.set_xticks([])
+        # ax.set_yticks([])
+        ax.set_yticks(np.arange(0, 81, 10))
         ax.set_ylabel(symbol)
+        ax.legend(labels=symbols, loc=2)
+
         ax = plt.twinx()
         ax.set_xticks([])
         ax.set_yticks([])
@@ -259,7 +287,12 @@ def show(row, col, symbols):
 
         i = i + 1
 
-    plt.legend()
+    # plt.legend()
+    basic = get_a_basic()
+    basic.index = basic['ts_code']
+    print top
+    print top.join(basic, how='inner')
+    plt.legend(labels=symbols, loc=2)
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
     plt.show()
 
@@ -341,61 +374,54 @@ def hot():
 # bias -3,3~19,29
 # willr_89 -36 -28  -2 0
 
+def get_a_basic():
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+    df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,industry')
+    return df
+
+
 if __name__ == '__main__':
-    get_buy("select distinct(symbol) from a_daily_ind where willr<-88 and willr_34<-88 and date = '2019-03-25'", 5, 5)
     # pct()
-    # save_a_daily_all(trade_date='20190327')
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-27')
-# low()
-# get_buy()
-# datas = []
-# # datas.append(query_by_sql("select * from a_daily_ind"))
-# datas.append(pd.read_csv('bb.cvs'))
-# datas.append(pd.read_csv('cc.cvs'))
-# colors = ['red', 'blue', 'yellow']
-# i = 0
-# for data in datas:
-#     data = data.sort_values(['willr_89'], ascending=True)
-#     data = data['willr_89'].dropna()
-#     plt.hist(data, facecolor=colors[i], bins=50)
-#     i = i + 1
-#     # print data.describe()[['willr', 'willr_34', 'willr_89', 'bias']]
-# plt.show()
 
-# high()
-# row = 6
-# col = 4
-# size = row * col
-# symbols = get_symbols("select distinct(symbol) from a_daily_ind where willr <-88  and date = '2019-03-18' order by bias limit 0," + str(size))
-# show(row, col, symbols[0:size])
-# aa = pd.read_csv('aa.cvs')
-# print len(aa), len(aa[aa['5'] > 0]), len(aa[aa['5'] > 5]), len(aa[aa['5'] > 10]), len(aa[aa['5'] > 15]), len(
-#     aa[aa['5'] > 20])
-# print len(aa), len(aa[aa['1'] > 0]), len(aa[aa['1'] > 5]), len(aa[aa['1'] > 10]), len(aa[aa['1'] > 15]), len(
-#     aa[aa['1'] > 20])
-# print aa.describe().T
-# print aa.sort_values(['5'], ascending=False)
-# aa = aa[aa['1'] > 30]
-# print aa['0'].tolist()
-#
-# symbols = aa['0'].tolist()
-# print len(symbols)
-# row = 6
-# col = 4
-# show(row, col, symbols[0:row * col])
+    pro = ts.pro_api()
+    basic = get_a_basic()
+    # print len(df)
+    # print df['industry'].value_counts()
 
-# pct()
-# df = df[df['pct'] > 5]
-# print df.count()
-# df = df.sort_values(['symbol'], ascending=True, inplace=False)
-# print df
-# pc = df.groupby(['symbol']).size()
-# print pc.sort_values(ascending=False, inplace=False)
+    industry_tops = pd.DataFrame()
+    i = 0
+    for industry in basic['industry'].unique():
+        i = i + 1
+        # if i > 2:
+        #     break;
+        symbols = basic[basic['industry'] == industry]['ts_code']
+        industry_top = pd.DataFrame()
+        for symbol in symbols:
+            data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
+                                        end_date='2019-03-30', append_ind=False)
+            data['pct'] = data['close'].pct_change() * 100
+            data['pct_sum'] = data['pct'].cumsum()
+            industry_top = industry_top.append(
+                pd.DataFrame([[data['pct_sum'].max(),data['pct_sum'][-1:0]]], index=[symbol], columns=['pct_sum','pct_cur']))
+            industry_top = industry_top.sort_values(by=['pct_sum'], ascending=False)
+        industry_tops = industry_tops.append(industry_top.head(10))
+    print industry_tops
+    basic.index = basic['ts_code']
+    industry_tops = industry_tops.join(basic, how='inner')
+    industry_tops = industry_tops[['pct_sum', 'pct_cur', 'name', 'industry']]
+    print industry_tops
+    print industry_tops[['pct_sum', 'pct_cur', 'name', 'industry']]
+    industry_tops.to_csv('industry_tops.csv')
 
-# print df.info()
-# print df[['symbol','close','pct']]
-# abc = df.groupby(['symbol', 'pct']).size().unstack()
-# print abc
+    # symbols = df[df['industry'] == '证券']['ts_code']
+    # symbols = ['601128.SH', '601577.SH', '002936.SZ',
+    #            '603323.SH', '002839.SZ', '002807.SZ',
+    #            '000001.SZ', '002142.SZ', '600036.SH','601009.SH',
+    #            '601166.SH', '601997.SH', '601998.SH','600908.SH','002948.SZ']
+    # symbols = [ '000001.SZ', '002142.SZ', '600036.SH','601009.SH']
+    # symbols = ['000728.SZ', '000783.SZ', '000776.SZ', '000712.SZ']
+    # show(6, 6, symbols)
 
-# get_buy()
-# get_a_daily_data_ind_all()
+# save_a_daily_all(trade_date='20190319')
+# save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-19')
