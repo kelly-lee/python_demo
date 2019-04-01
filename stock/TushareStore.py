@@ -4,7 +4,7 @@ import sys
 
 reload(sys)
 sys.setdefaultencoding('utf8')
-
+import time
 import tushare as ts
 import pandas as pd
 from sqlalchemy import create_engine
@@ -44,15 +44,13 @@ def save_a_daily_all(trade_date):
     :param trade_date:
     :return:
     """
-    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
-    pro = ts.pro_api()
-    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    # try:
-    h_data = pro.daily(trade_date=trade_date)
+    h_data = get_a_daily(trade_date=trade_date)
     h_data = h_data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'ts_code']]
     h_data.rename(
         columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
     h_data['adj_close'] = 0
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    # try:
     # print h_data.head(5)
     h_data.to_sql('a_daily', engine, if_exists='append', index=False)
     print 'loaded'
@@ -222,7 +220,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # 根据股票代码显示股价
 def show(row, col, symbols):
-    fig = plt.figure(figsize=(16, 8))
+    fig = plt.figure(figsize=(12, 8))
 
     i = 1
 
@@ -233,18 +231,18 @@ def show(row, col, symbols):
         data['pct'] = data['close'].pct_change() * 100
         data['pct_sum'] = data['pct'].cumsum()
 
-        if (data['pct_sum'].max() < 65):
-            continue
-        if (data['pct_sum'].max() > 75):
-            continue
+        # if (data['pct_sum'].max() < 65):
+        #     continue
+        # if (data['pct_sum'].max() > 75):
+        #     continue
         print symbol, data['pct_sum'].max()
         top = top.append(pd.DataFrame([[data['pct_sum'].max()]], index=[symbol]))
         # print data.head()
         close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
         bias, pdi = data['bias'], data['pdi']
 
-        ax = fig.add_subplot(row, col, i)
-        # ax = fig.add_subplot(1, 1, 1)
+        # ax = fig.add_subplot(row, col, i)
+        ax = fig.add_subplot(1, 1, 1)
 
         # ax.plot(bias, c='grey')
         buy = close[
@@ -264,8 +262,8 @@ def show(row, col, symbols):
             # & ind.BOTTOM(willr_89)
             ]
         # ax.scatter(buy.index, buy, s=20, c='green')
-        scaler = MinMaxScaler()
-        data['c'] = scaler.fit_transform(close.values.reshape(-1, 1))
+        # scaler = MinMaxScaler()
+        # data['c'] = scaler.fit_transform(close.values.reshape(-1, 1))
 
         ax.plot(data['pct_sum'])
         # ax.plot(ind.MAX(close, 10), c='grey')
@@ -274,7 +272,7 @@ def show(row, col, symbols):
         # ax.set_yticks([])
         ax.set_yticks(np.arange(0, 81, 10))
         ax.set_ylabel(symbol)
-        ax.legend(labels=symbols, loc=2)
+        # ax.legend(labels=symbols, loc=2)
 
         ax = plt.twinx()
         ax.set_xticks([])
@@ -377,44 +375,91 @@ def hot():
 def get_a_basic():
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
     pro = ts.pro_api()
-    df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,symbol,name,industry')
+    df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,name,industry,list_date,area')
     return df
 
 
-if __name__ == '__main__':
-    # pct()
-
+def get_a_daily(trade_date):
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
     pro = ts.pro_api()
-    basic = get_a_basic()
-    # print len(df)
-    # print df['industry'].value_counts()
+    h_data = pro.daily(trade_date=trade_date)
+    return h_data
 
+
+def get_industry_sat():
     industry_tops = pd.DataFrame()
+    basic = get_a_basic()
     i = 0
     for industry in basic['industry'].unique():
         i = i + 1
-        # if i > 2:
-        #     break;
         symbols = basic[basic['industry'] == industry]['ts_code']
         industry_top = pd.DataFrame()
         for symbol in symbols:
-            data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
-                                        end_date='2019-03-30', append_ind=False)
-            data['pct'] = data['close'].pct_change() * 100
-            data['pct_sum'] = data['pct'].cumsum()
-            industry_top = industry_top.append(
-                pd.DataFrame([[data['pct_sum'].max(),data['pct_sum'][-1:0]]], index=[symbol], columns=['pct_sum','pct_cur']))
-            industry_top = industry_top.sort_values(by=['pct_sum'], ascending=False)
-        industry_tops = industry_tops.append(industry_top.head(10))
-    print industry_tops
+            print symbol
+            try:
+                data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
+                                            end_date='2019-03-30', append_ind=False)
+                data['pct'] = data['close'].pct_change() * 100
+                data['pct_sum'] = data['pct'].cumsum()
+                p5 = len(data[data['pct'] > 5])
+                p6 = len(data[data['pct'] > 6])
+                p7 = len(data[data['pct'] > 7])
+                p8 = len(data[data['pct'] > 8])
+                p9 = len(data[data['pct'] > 9])
+                s5 = len(data[data['pct'] < -5])
+                s6 = len(data[data['pct'] < -6])
+                s7 = len(data[data['pct'] < -7])
+                s8 = len(data[data['pct'] < -8])
+                s9 = len(data[data['pct'] < -9])
+                p8 = p8 - p9
+                p7 = p7 - p8
+                p6 = p6 - p7
+                p5 = p5 - p6
+                s8 = s8 - s9
+                s7 = s7 - s8
+                s6 = s6 - s7
+                s5 = s5 - s6
+                industry_top = industry_top.append(pd.DataFrame([[symbol, p5, p6, p7, p8, p9, s5, s6, s7, s8, s9,
+                                                                  data['pct_sum'].max(),
+                                                                  data['pct_sum'].tail(1).values[0]]],
+                                                                columns=['symbol', 'p5', 'p6', 'p7', 'p8', 'p9', 's5',
+                                                                         's6', 's7', 's8', 's9', 'pct_sum', 'pct_cur']))
+                industry_top = industry_top.sort_values(by=['pct_sum'], ascending=False)
+            except:
+                print 'error', symbol
+            # print industry_top
+        industry_tops = industry_tops.append(industry_top)
     basic.index = basic['ts_code']
+    industry_tops.index = industry_tops['symbol']
     industry_tops = industry_tops.join(basic, how='inner')
-    industry_tops = industry_tops[['pct_sum', 'pct_cur', 'name', 'industry']]
+    industry_tops = industry_tops[['pct_sum', 'pct_cur', 'p5', 'p6', 'p7', 'p8', 'p9', 's5', 's6',
+                                   's7', 's8', 's9', 'name', 'industry', 'list_date', 'area']]
     print industry_tops
-    print industry_tops[['pct_sum', 'pct_cur', 'name', 'industry']]
-    industry_tops.to_csv('industry_tops.csv')
+    industry_tops.to_csv('industry_tops_1.csv')
 
-    # symbols = df[df['industry'] == '证券']['ts_code']
+
+def get_industry_top():
+    industry_top = pd.read_csv('industry_tops_1.csv')
+    industry_top['pct_dif'] = industry_top['pct_sum'] - industry_top['pct_cur']
+    df = industry_top[['industry', 'pct_dif']].groupby(by=['industry']).max()
+    df = df.sort_values(by=['pct_dif'], ascending=False)
+    df['industry'] = df.index
+    m = pd.merge(df, industry_top, on=['industry', 'pct_dif'], how='inner')
+    print m[['pct_sum', 'industry', 'name', 'pct_dif', 'pct_cur']]
+
+
+if __name__ == '__main__':
+
+    # pct()
+    # pro = ts.pro_api()
+    basic = get_a_basic()
+    for industry in basic['industry'].unique():
+        print industry
+    # print len(df)
+    # print df['industry'].value_counts()
+    # get_industry_top()
+
+    # symbols = basic[basic['industry'] == '电气设备']['ts_code']
     # symbols = ['601128.SH', '601577.SH', '002936.SZ',
     #            '603323.SH', '002839.SZ', '002807.SZ',
     #            '000001.SZ', '002142.SZ', '600036.SH','601009.SH',
@@ -423,5 +468,19 @@ if __name__ == '__main__':
     # symbols = ['000728.SZ', '000783.SZ', '000776.SZ', '000712.SZ']
     # show(6, 6, symbols)
 
-# save_a_daily_all(trade_date='20190319')
-# save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-19')
+    # save_a_daily_all(trade_date='20190401')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-19')
+    # a_daily = query_by_sql("select * from a_daily where date > 2019-04-01")
+    # a_daily['ts_code'] = a_daily['symbol']
+
+    date_range = pd.date_range('20190101', '20190401')
+    for dr in date_range:
+        print pd.to_datetime(dr, format='%d.%m.%Y')
+        print type(dr)
+        print  time.strftime("%Y%m%d", dr)
+    a_daily = get_a_daily('20190401')
+    print a_daily
+    m = pd.merge(basic, a_daily, on=['ts_code'], how='inner')
+    m = m[['industry', 'pct_chg']]
+    m = m.groupby(by=['industry']).max()
+    print m
