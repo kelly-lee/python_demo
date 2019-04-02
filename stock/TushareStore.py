@@ -441,46 +441,83 @@ def get_industry_sat():
 def get_industry_top():
     industry_top = pd.read_csv('industry_tops_1.csv')
     industry_top['pct_dif'] = industry_top['pct_sum'] - industry_top['pct_cur']
-    df = industry_top[['industry', 'pct_dif']].groupby(by=['industry']).max()
-    df = df.sort_values(by=['pct_dif'], ascending=False)
-    df['industry'] = df.index
-    m = pd.merge(df, industry_top, on=['industry', 'pct_dif'], how='inner')
-    print m[['pct_sum', 'industry', 'name', 'pct_dif', 'pct_cur']]
+    df = industry_top[['industry', 'pct_sum']].groupby(by=['industry']).agg(['mean','std','min','max'])
+    print df
+    plt.show()
+    # df = df.sort_values(by=['pct_dif'], ascending=False)
+    # df['industry'] = df.index
+    # m = pd.merge(df, industry_top, on=['industry', 'pct_dif'], how='inner')
+    # print m[['pct_sum', 'industry', 'name', 'pct_dif', 'pct_cur']]
+
+def get_daily_choose():
+    a_daily = query_by_sql("SELECT * FROM Stock.a_daily_ind where  willr<-80  and date='2019-04-01' order by willr asc")
+    a_daily['ts_code'] = a_daily['symbol']
+    industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
+    industry_top['symbol'] = industry_top.index
+    print industry_top.head()
+    m = pd.merge(industry_top, a_daily, on=['symbol'], how='inner')
+    m.to_csv('daily.csv')
 
 
-if __name__ == '__main__':
-
-    # pct()
-    # pro = ts.pro_api()
+def draw_indkstry_k():
     basic = get_a_basic()
-    for industry in basic['industry'].unique():
-        print industry
-    # print len(df)
-    # print df['industry'].value_counts()
-    # get_industry_top()
-
-    # symbols = basic[basic['industry'] == '电气设备']['ts_code']
+    symbols = basic[basic['industry'] == '造纸']['ts_code']
     # symbols = ['601128.SH', '601577.SH', '002936.SZ',
     #            '603323.SH', '002839.SZ', '002807.SZ',
     #            '000001.SZ', '002142.SZ', '600036.SH','601009.SH',
     #            '601166.SH', '601997.SH', '601998.SH','600908.SH','002948.SZ']
-    # symbols = [ '000001.SZ', '002142.SZ', '600036.SH','601009.SH']
-    # symbols = ['000728.SZ', '000783.SZ', '000776.SZ', '000712.SZ']
-    # show(6, 6, symbols)
+    fig = plt.figure(figsize=(8, 8))
+    i = 1
+    for symbol in symbols:
+        data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
+                                    end_date='2019-04-30', append_ind=False)
+        data['pct'] = data['close'].pct_change() * 100
+        data['pct_sum'] = data['pct'].cumsum()
+        if (data['pct_sum'].max() < 30):
+            continue
+        if (data['pct_sum'].max() > 100):
+            continue
+        print symbol, data['pct_sum'].max()
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(data['pct_sum'])
+        ax.set_yticks(np.arange(0, 80, 10))
+        i = i + 1
+        ax.legend(labels=symbols, loc=2)
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
+    plt.show()
 
+if __name__ == '__main__':
+    # get_industry_top()
     # save_a_daily_all(trade_date='20190401')
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-03-19')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-01')
+    draw_indkstry_k()
+
+    # pct()
+    # pro = ts.pro_api()
+    # basic = get_a_basic()
+    # for industry in basic['industry'].unique():
+    #     print industry
+    # print len(df)
+    # print df['industry'].value_counts()
+    # get_industry_top()
+
+
+
+
+
     # a_daily = query_by_sql("select * from a_daily where date > 2019-04-01")
     # a_daily['ts_code'] = a_daily['symbol']
+    #
+    # date_range = pd.date_range('20190101', '20190401')
+    # for dr in date_range:
+    #     print pd.to_datetime(dr, format='%d.%m.%Y')
+    #     print type(dr)
+    #     print  time.strftime("%Y%m%d", dr)
+    # a_daily = get_a_daily('20190401')
+    # print a_daily
+    # m = pd.merge(basic, a_daily, on=['ts_code'], how='inner')
+    # m = m[['industry', 'pct_chg']]
+    # m = m.groupby(by=['industry']).max()
+    # print m
 
-    date_range = pd.date_range('20190101', '20190401')
-    for dr in date_range:
-        print pd.to_datetime(dr, format='%d.%m.%Y')
-        print type(dr)
-        print  time.strftime("%Y%m%d", dr)
-    a_daily = get_a_daily('20190401')
-    print a_daily
-    m = pd.merge(basic, a_daily, on=['ts_code'], how='inner')
-    m = m[['industry', 'pct_chg']]
-    m = m.groupby(by=['industry']).max()
-    print m
+
