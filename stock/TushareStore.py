@@ -227,7 +227,7 @@ def show(row, col, symbols):
     top = pd.DataFrame()
     for symbol in symbols:
         data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
-                                    end_date='2019-03-30', append_ind=False)
+                                    end_date='2019-04-30', append_ind=False)
         data['pct'] = data['close'].pct_change() * 100
         data['pct_sum'] = data['pct'].cumsum()
 
@@ -243,7 +243,7 @@ def show(row, col, symbols):
 
         # ax = fig.add_subplot(row, col, i)
         ax = fig.add_subplot(1, 1, 1)
-
+        ax.legend(labels=symbols, loc=2)
         # ax.plot(bias, c='grey')
         buy = close[
             ind.LESS_THAN(willr, -88) &
@@ -441,13 +441,14 @@ def get_industry_sat():
 def get_industry_top():
     industry_top = pd.read_csv('industry_tops_1.csv')
     industry_top['pct_dif'] = industry_top['pct_sum'] - industry_top['pct_cur']
-    df = industry_top[['industry', 'pct_sum']].groupby(by=['industry']).agg(['mean','std','min','max'])
+    df = industry_top[['industry', 'pct_sum']].groupby(by=['industry']).agg(['mean', 'std', 'min', 'max'])
     print df
     plt.show()
     # df = df.sort_values(by=['pct_dif'], ascending=False)
     # df['industry'] = df.index
     # m = pd.merge(df, industry_top, on=['industry', 'pct_dif'], how='inner')
     # print m[['pct_sum', 'industry', 'name', 'pct_dif', 'pct_cur']]
+
 
 def get_daily_choose():
     a_daily = query_by_sql("SELECT * FROM Stock.a_daily_ind where  willr<-80  and date='2019-04-01' order by willr asc")
@@ -486,11 +487,20 @@ def draw_indkstry_k():
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
     plt.show()
 
+
 if __name__ == '__main__':
+    industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
+    industry_top = industry_top[industry_top['pct_sum'] < 30]
+    industry_top = industry_top[industry_top['pct_sum'] > 20]
+    industry_top = industry_top[industry_top['list_date'] < 20190101]
+    industry_top = industry_top.sort_values(by=['industry'], ascending=False)
+    # industry_top = industry_top[industry_top['industry'] == '农业综合']
+    print industry_top.info()
+    show(1, 1, industry_top.index)
     # get_industry_top()
     # save_a_daily_all(trade_date='20190401')
     # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-01')
-    draw_indkstry_k()
+    # draw_indkstry_k()
 
     # pct()
     # pro = ts.pro_api()
@@ -500,10 +510,6 @@ if __name__ == '__main__':
     # print len(df)
     # print df['industry'].value_counts()
     # get_industry_top()
-
-
-
-
 
     # a_daily = query_by_sql("select * from a_daily where date > 2019-04-01")
     # a_daily['ts_code'] = a_daily['symbol']
@@ -519,5 +525,3 @@ if __name__ == '__main__':
     # m = m[['industry', 'pct_chg']]
     # m = m.groupby(by=['industry']).max()
     # print m
-
-
