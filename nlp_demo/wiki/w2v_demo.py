@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # process_wiki_data.py 用于解析XML，将XML的wiki数据转换为text格式
-
+# https://dumps.wikimedia.org/zhwiki/latest/
 import logging
 import os.path
 import sys
@@ -71,11 +71,13 @@ def train_word2vec_model(seg_path, model_path, vector_path):
     model.save(outp1)
     model.wv.save_word2vec_format(outp2, binary=False)
 
+
 def test():
     model = gensim.models.Word2Vec.load("wiki.zh.text.model")
-    result =  model.most_similar(u"足球")
+    result = model.most_similar(u"芝麻")
     for e in result:
-        print e[0],e[1]
+        print e[0], e[1]
+
 
 if __name__ == '__main__':
     reload(sys)
