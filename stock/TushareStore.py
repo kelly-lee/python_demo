@@ -19,6 +19,59 @@ from sklearn.model_selection import train_test_split
 import xgboost as xgb
 
 
+def get_ts_pro():
+    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
+    pro = ts.pro_api()
+
+#获得每天行情
+def get_ts_daily(trade_date):
+    pro = get_ts_pro()
+    data = pro.daily(trade_date=trade_date)
+    data = data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'ts_code', 'pct_chg']]
+    data.rename(
+        columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
+    return data
+#获得股票基本信息
+def get_ts_basic():
+    pro = get_ts_pro()
+    df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,name,industry,list_date,area')
+    return df
+
+def get_a_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
+    """
+    获得股价信息
+    :param table:
+    :param symbol:
+    :param trade_date:
+    :param start_date:
+    :param end_date:
+    :param append_ind:
+    :return:
+    """
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    df = pd.DataFrame()
+    sql = "SELECT * FROM " + table + " where 1=1 "
+    if (len(symbol) > 0) & (not symbol.isspace()):
+        sql += "and symbol = %(symbol)s "
+    if (len(trade_date) > 0) & (not trade_date.isspace()):
+        sql += "and date = %(date)s "
+    if (len(start_date) > 0) & (not start_date.isspace()):
+        sql += "and date >= %(start_date)s "
+    if (len(end_date) > 0) & (not end_date.isspace()):
+        sql += "and date <= %(end_date)s "
+    sql += "order by symbol asc , date asc "
+    print sql
+    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
+                                    'end_date': end_date}, con=con)
+    print 'load data'
+    if append_ind:
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+    df = df.append(data)
+    con.close()
+    return df
+
 # 保存沪深复权因子
 def save_adj_factor(start_symbol='000', end_symbol='601', trade_date=''):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
@@ -44,18 +97,15 @@ def save_a_daily_all(trade_date):
     :param trade_date:
     :return:
     """
-    h_data = get_a_daily(trade_date=trade_date)
-    h_data = h_data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'ts_code']]
-    h_data.rename(
-        columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
+    h_data = get_ts_daily(trade_date=trade_date)
+    h_data = h_data[['symbol', 'date', 'high', 'low', 'open', 'close', 'vol']]
     h_data['adj_close'] = 0
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    # try:
-    # print h_data.head(5)
-    h_data.to_sql('a_daily', engine, if_exists='append', index=False)
-    print 'loaded'
-    # except:
-    #     print 'loaded error'
+    try:
+        h_data.to_sql('a_daily', engine, if_exists='append', index=False)
+        print 'loaded'
+    except:
+        print 'loaded error'
 
 
 def save_a_daily_data(start_symbol, end_symbol, start_date, end_date):
@@ -114,6 +164,19 @@ def save_a_daily_data_ind(start_date, end_date):
         print symbol, 'loaded'
 
 
+def query_by_sql(sql):
+    con = db.connect('localhost', 'root', 'root', 'stock')
+    return pd.read_sql(sql, con=con)
+
+# 根据sql查询符合条件的股票代码
+def get_symbols(sql=''):
+    if (len(sql) == 0) | (sql.isspace()):
+        sql = "select distinct(symbol) from a_daily order by symbol asc"
+    return query_by_sql(sql)['symbol'].tolist()
+
+
+###################################################
+
 def get_a_stock_list(table):
     """
     获得库中存在的股票列表
@@ -124,43 +187,6 @@ def get_a_stock_list(table):
     sql = "SELECT distinct(symbol) FROM " + table + " where 1=1 "
     return pd.read_sql(sql, con=con)
 
-
-def get_a_daily_data_ind(table='', symbol='', trade_date='', start_date='', end_date='', append_ind=False):
-    """
-    获得股价信息
-    :param table:
-    :param symbol:
-    :param trade_date:
-    :param start_date:
-    :param end_date:
-    :param append_ind:
-    :return:
-    """
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    df = pd.DataFrame()
-    sql = "SELECT * FROM " + table + " where 1=1 "
-    if (len(symbol) > 0) & (not symbol.isspace()):
-        sql += "and symbol = %(symbol)s "
-    if (len(trade_date) > 0) & (not trade_date.isspace()):
-        sql += "and date = %(date)s "
-    if (len(start_date) > 0) & (not start_date.isspace()):
-        sql += "and date >= %(start_date)s "
-    if (len(end_date) > 0) & (not end_date.isspace()):
-        sql += "and date <= %(end_date)s "
-    sql += "order by symbol asc , date asc "
-    print sql
-    data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
-                                    'end_date': end_date}, con=con)
-    print 'load data'
-    if append_ind:
-        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
-        ochl2ind = ind.ochl2ind(open, close, high, low, volume)
-        data = data.join(ochl2ind, how='left')
-    df = df.append(data)
-    con.close()
-    return df
-
-
 # 获得沪深列表
 def get_basic_stock(start='', end=''):
     ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
@@ -169,11 +195,6 @@ def get_basic_stock(start='', end=''):
     stock_basics = stock_basics[(stock_basics.symbol < end) & (stock_basics.symbol > start)][
         ['ts_code', 'name']]
     return stock_basics
-
-
-def query_by_sql(sql):
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    return pd.read_sql(sql, con=con)
 
 
 def get_a_daily_data_ind_all():
@@ -208,7 +229,6 @@ def get_a_daily_data_ind_all():
     plt.show()
 
 
-#
 def get_buy(sql, row, col):
     size = row * col
     sql = sql + " limit 0," + str(size)
@@ -295,71 +315,6 @@ def show(row, col, symbols):
     plt.show()
 
 
-# 根据sql查询符合条件的股票代码
-def get_symbols(sql=''):
-    if (len(sql) == 0) | (sql.isspace()):
-        sql = "select distinct(symbol) from a_daily order by symbol asc"
-    return query_by_sql(sql)['symbol'].tolist()
-
-
-# 统计配置股票涨幅频率
-def pct():
-    symbols = get_symbols()
-    data = pd.DataFrame()
-    # i = 0
-    for symbol in symbols:
-        # i = i + 1
-        # if i > 5:
-        #     break
-        sql = "select * from a_daily where symbol = '" + symbol + "' order by date asc"
-        df = query_by_sql(sql)
-        df['pct'] = df['close'].pct_change() * 100
-        p5 = len(df[df['pct'] > 5])
-        p6 = len(df[df['pct'] > 6])
-        p7 = len(df[df['pct'] > 7])
-        p8 = len(df[df['pct'] > 8])
-        p9 = len(df[df['pct'] > 9])
-        s5 = len(df[df['pct'] < -5])
-        s6 = len(df[df['pct'] < -6])
-        s7 = len(df[df['pct'] < -7])
-        s8 = len(df[df['pct'] < -8])
-        s9 = len(df[df['pct'] < -9])
-        print symbol
-        p8 = p8 - p9
-        p7 = p7 - p8
-        p6 = p6 - p7
-        p5 = p5 - p6
-        s8 = s8 - s9
-        s7 = s7 - s8
-        s6 = s6 - s7
-        s5 = s5 - s6
-        data = data.append(pd.DataFrame([[symbol, p5, p6, p7, p8, p9, s5, s6, s7, s8, s9]],
-                                        columns=['symbol', 'p5', 'p6', 'p7', 'p8', 'p9', 's5', 's6', 's7', 's8', 's9']))
-        data.to_csv("pct_data.cvs")
-
-
-def high():
-    symbols = get_symbols()
-    data = pd.DataFrame()
-    for symbol in symbols:
-        sql = "select * from a_daily_ind where symbol = '" + symbol + "' order by date asc"
-        df = query_by_sql(sql)
-        df['pct'] = df['close'].pct_change() * 100
-        data = data.append(df[df['pct'].shift(-1) > 9])
-    data.to_csv("high_data.cvs")
-
-
-def low():
-    symbols = get_symbols()
-    data = pd.DataFrame()
-    for symbol in symbols:
-        sql = "select * from a_daily_ind where symbol = '" + symbol + "' order by date asc"
-        df = query_by_sql(sql)
-        df['pct'] = df['close'].pct_change() * 100
-        data = data.append(df[df['pct'].shift(-1) < -9])
-    data.to_csv("low_data.cvs")
-
-
 def hot():
     aa = pd.read_csv('aa.cvs')
     aa = aa[aa['1'] > 30]
@@ -371,24 +326,9 @@ def hot():
 
 # bias -3,3~19,29
 # willr_89 -36 -28  -2 0
-
-def get_a_basic():
-    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
-    pro = ts.pro_api()
-    df = pro.stock_basic(exchange='', list_status='L', fields='ts_code,name,industry,list_date,area')
-    return df
-
-
-def get_a_daily(trade_date):
-    ts.set_token('4a988cfe3f2411b967592bde8d6e0ecbee9e364b693b505934401ea7')
-    pro = ts.pro_api()
-    h_data = pro.daily(trade_date=trade_date)
-    return h_data
-
-
 def get_industry_sat():
     industry_tops = pd.DataFrame()
-    basic = get_a_basic()
+    basic = get_ts_basic()
     i = 0
     for industry in basic['industry'].unique():
         i = i + 1
@@ -461,7 +401,7 @@ def get_daily_choose():
 
 
 def draw_indkstry_k():
-    basic = get_a_basic()
+    basic = get_ts_basic()
     symbols = basic[basic['industry'] == '造纸']['ts_code']
     # symbols = ['601128.SH', '601577.SH', '002936.SZ',
     #            '603323.SH', '002839.SZ', '002807.SZ',
@@ -488,18 +428,56 @@ def draw_indkstry_k():
     plt.show()
 
 
+def test():
+    pp5_list = []
+    ps5_list = []
+    dates = pd.date_range('1/1/2019', '4/4/2019')
+    for date in dates:
+        date = date.strftime('%Y%m%d')
+        data = get_ts_daily(date)
+        size = len(data)
+        if size == 0:
+            continue
+        pp5 = len(data[data['pct_chg'] >= 5]) * 1.0 / size
+        ps5 = len(data[data['pct_chg'] <= -5]) * 1.0 / size
+        pp5_list.append(pp5)
+        ps5_list.append(ps5)
+        print date, pp5, ps5
+
+    plt.plot(pp5_list)
+    plt.plot(ps5_list)
+    plt.show()
+
+
 if __name__ == '__main__':
-    industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
-    industry_top = industry_top[industry_top['pct_sum'] < 30]
-    industry_top = industry_top[industry_top['pct_sum'] > 20]
-    industry_top = industry_top[industry_top['list_date'] < 20190101]
-    industry_top = industry_top.sort_values(by=['industry'], ascending=False)
+    # 保存每天行情
+    # save_a_daily_all(trade_date='20190404')
+    # 保存所有买卖技术指标
+    save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-03')
+
+    # engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    # try:
+    #     data = ts.get_report_data(2018, 4)
+    #     h_data.to_sql('report_data', engine, if_exists='append', index=False)
+    #     print 'loaded'
+    # except:
+    #     print 'loaded error'
+    # print data
+    # dates = pd.date_range('1/1/2019', '4/1/2019')
+    # for date in dates:
+    #     print date, type(date), date.strftime('%Y%m%d')
+    # test()
+    # industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
+    # industry_top = industry_top[industry_top['pct_sum'] < 30]
+    # industry_top = industry_top[industry_top['pct_sum'] > 20]
+    # industry_top = industry_top[industry_top['list_date'] < 20190101]
+    # industry_top = industry_top.sort_values(by=['industry'], ascending=False)
     # industry_top = industry_top[industry_top['industry'] == '农业综合']
-    print industry_top.info()
-    show(1, 1, industry_top.index)
+    # print industry_top.info()
+    # show(1, 1, industry_top.index)
     # get_industry_top()
-    # save_a_daily_all(trade_date='20190401')
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-01')
+
+
     # draw_indkstry_k()
 
     # pct()
