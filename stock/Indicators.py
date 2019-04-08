@@ -92,6 +92,7 @@ def TP(high, low, close):
 
 ######################################################################################
 
+
 def MAX(price, time_period):
     return price.rolling(time_period).max()
 
@@ -436,9 +437,52 @@ def AR(high, low, open, time_period):
     return (high_sum - open_sum) / (open_sum - low_sum)
 
 
+def sat(data):
+    sat = pd.DataFrame()
+    p5 = len(data[data['pct'] > 5])
+    p6 = len(data[data['pct'] > 6])
+    p7 = len(data[data['pct'] > 7])
+    p8 = len(data[data['pct'] > 8])
+    p9 = len(data[data['pct'] > 9])
+    s5 = len(data[data['pct'] < -5])
+    s6 = len(data[data['pct'] < -6])
+    s7 = len(data[data['pct'] < -7])
+    s8 = len(data[data['pct'] < -8])
+    s9 = len(data[data['pct'] < -9])
+    for period in [3, 5, 15, 30, 60, 90]:
+        sat['pct_sum_%d_max' % period] = data['pct_sum_%d' % period].max()
+        sat['pct_sum_%d_min' % period] = data['pct_sum_%d' % period].min()
+
+
+def ochl2buy(open, close, high, low, volume):
+    data = pd.DataFrame()
+
+    data['pct'] = PCT_CHANGE(close) * 100
+    data['pct_ref'] = REF(PCT_CHANGE(close)) * 100
+    for period in [3, 5, 15, 30, 60, 90]:
+        data['pct_sum_%d' % period] = SUM(data['pct'], period)
+    for period in [5, 10, 20, 30, 60, 120]:
+        data['sma_%d' % period] = SMA(close, period)
+        data['ema_%d' % period] = EMA(close, period)
+    data['willr'] = WILLR(high, low, close, 6)
+    data['willr_34'] = WILLR(high, low, close, 34)
+    data['willr_89'] = WILLR(high, low, close, 89)
+    pdi, mdi = DI(high, low, close, 14)
+    data['pdi'] = pdi
+    data['bias'] = BIAS(close, 24)
+    return data
+
+
 def ochl2ind(open, close, high, low, volume):
     data = pd.DataFrame()
 
+    data['pct'] = PCT_CHANGE(close) * 100
+    data['pct_ref'] = REF(PCT_CHANGE(close)) * 100
+
+    for period in [3, 5, 15, 30, 60, 90]:
+        data['pct_sum_%d' % period] = SUM(data['pct'], period)
+
+    # ma
     # for period in [5, 10, 20, 30, 60, 120]:
     #     data['sma_%d' % period] = SMA(close, period)
     #     data['ema_%d' % period] = EMA(close, period)
@@ -447,6 +491,7 @@ def ochl2ind(open, close, high, low, volume):
     #     data['smma_%d' % period] = SMMA(close, period)
     #     data['tema_%d' % period] = TEMA(close, period)
 
+    # min，max
     for period in [5, 10, 20, 30]:
         data['min_%d' % period] = MIN(close, period)
         data['max_%d' % period] = MAX(close, period)
@@ -456,13 +501,13 @@ def ochl2ind(open, close, high, low, volume):
     data['upper_band'] = upper_band
     data['middle_band'] = middle_band
     data['lower_band'] = lower_band
-    # print 'bbands'
+
     # macd
     macd, macdsignal, macdhist = MACD(close, 12, 26, 9)
     data['macd'] = macd
     data['macd_signal'] = macdsignal
     data['macd_hist'] = macdhist
-    # print 'macd'
+
     # kdj
     slow_k, slow_d = STOCH(high, low, close, 9, 3, 3)
     data['slow_k'] = slow_k
@@ -471,7 +516,6 @@ def ochl2ind(open, close, high, low, volume):
     fast_k, fast_d = STOCHF(high, low, close, 9, 3)
     data['fast_k'] = fast_k
     data['fast_d'] = fast_d
-    # print 'kdj'
 
     # dmi
     data['tr'] = TR(high, low, close)
@@ -485,6 +529,7 @@ def ochl2ind(open, close, high, low, volume):
     data['adx'] = DX(high, low, close, 6)
     data['adxr'] = ADXR(high, low, close, 6)
     # print 'dmi'
+
     # aroon
     # aroon_up, aroon_down = AROON(high, low, 14)
     # data['aroon_up'] = aroon_up
@@ -503,7 +548,7 @@ def ochl2ind(open, close, high, low, volume):
     data['obv'] = OBV(close, volume)
     data['vol_roc'] = ROC(volume)
     data['roc'] = ROC(close, 6)
-    # min,max
     data['bias'] = BIAS(close, 24)
+    # min,max
     data['c_min'] = close - MIN(close, 10)
     return data
