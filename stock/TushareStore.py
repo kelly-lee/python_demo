@@ -126,9 +126,38 @@ def save_a_daily_data_ind(start_date, end_date):
         data.to_sql('a_daily_ind', engine, if_exists='append', index=False)
         print symbol, 'loaded'
 
+#统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
+def save_industry_sat():
+    industry_sats = pd.DataFrame()
+    basic_stock = query_basic_stock()
+    print basic_stock.head(5)
+    i = 0
+    for industry in basic_stock['industry'].unique():
+        i = i + 1
+        symbols = basic_stock[basic_stock['industry'] == industry]['ts_code']
+        industry_sat = pd.DataFrame()
+        for symbol in symbols:
+            print symbol
+            # try:
+            data = query_a_daily_data_ind(symbol=symbol, trade_date='', start_date='2019-01-01',
+                                          end_date='2019-04-08')
+            sat = ind.sat(data)
+            sat['symbol'] = symbol
+            industry_sat = industry_sat.append(sat)
+            industry_sat = industry_sat.sort_values(by=['pct_sum_90_max'], ascending=False)
+            # except:
+            #     print 'error', symbol
+            # print industry_top
+        industry_sats = industry_sats.append(industry_sat)
+    basic_stock['symbol'] = basic_stock['ts_code']
+    industry_sats = pd.merge(basic_stock, industry_sats, on=['symbol'], how='inner')
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    industry_sats.to_sql('industry_sats', engine, if_exists='append', index=False)
+    industry_sats.to_csv('industry_tops_2.csv')
+
 
 def query_by_sql(sql='', params={}):
-    con = db.connect('localhost', 'root', 'root', 'stock')
+    con = db.connect('localhost', 'root', 'root', 'stock', charset='utf8')
     data = pd.read_sql(sql=sql, params=params, con=con)
     con.close()
     return data
@@ -167,7 +196,6 @@ def query_a_daily_data_ind(symbol='', trade_date='', start_date='', end_date='')
     if (len(end_date) > 0) & (not end_date.isspace()):
         sql += "and date <= %(end_date)s "
     sql += "order by symbol asc , date asc "
-
     params = {'symbol': symbol, 'date': trade_date, 'start_date': start_date, 'end_date': end_date}
     print sql, params
     return query_by_sql(sql, params)
@@ -239,6 +267,7 @@ def test_draw_pct_sum():
     names = basic['name']
     draw_pct_sum(symbols=symbols, names=names, start_date='2019-01-01', end_date='2019-04-30')
 
+
 # 画 willr整体分布图
 def draw_willr_bar():
     data = query_by_sql(sql="select date,willr from a_daily_ind order by date asc")
@@ -247,7 +276,7 @@ def draw_willr_bar():
     fig = plt.figure(figsize=(8, 8))
     i = 1
     for date in data['date'].unique()[-20:]:
-        willr = data[data['date']==date]['willr']
+        willr = data[data['date'] == date]['willr']
         willr = willr.sort_values()
         willr.index = np.arange(1, len(willr) + 1)
         ax = fig.add_subplot(row, col, i)
@@ -258,15 +287,7 @@ def draw_willr_bar():
     plt.show()
 
 
-
 ###################################################
-
-
-
-
-
-
-from sklearn.preprocessing import MinMaxScaler
 
 
 # 根据股票代码显示股价
@@ -346,71 +367,6 @@ def show(row, col, symbols):
     plt.show()
 
 
-# bias -3,3~19,29
-# willr_89 -36 -28  -2 0
-def get_industry_sat():
-    industry_tops = pd.DataFrame()
-    basic = get_ts_basic()
-    i = 0
-    for industry in basic['industry'].unique():
-        i = i + 1
-        symbols = basic[basic['industry'] == industry]['ts_code']
-        industry_top = pd.DataFrame()
-        for symbol in symbols:
-            print symbol
-            try:
-                data = get_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
-                                            end_date='2019-03-30', append_ind=False)
-                data['pct'] = data['close'].pct_change() * 100
-                data['pct_sum'] = data['pct'].cumsum()
-                p5 = len(data[data['pct'] > 5])
-                p6 = len(data[data['pct'] > 6])
-                p7 = len(data[data['pct'] > 7])
-                p8 = len(data[data['pct'] > 8])
-                p9 = len(data[data['pct'] > 9])
-                s5 = len(data[data['pct'] < -5])
-                s6 = len(data[data['pct'] < -6])
-                s7 = len(data[data['pct'] < -7])
-                s8 = len(data[data['pct'] < -8])
-                s9 = len(data[data['pct'] < -9])
-                p8 = p8 - p9
-                p7 = p7 - p8
-                p6 = p6 - p7
-                p5 = p5 - p6
-                s8 = s8 - s9
-                s7 = s7 - s8
-                s6 = s6 - s7
-                s5 = s5 - s6
-                industry_top = industry_top.append(pd.DataFrame([[symbol, p5, p6, p7, p8, p9, s5, s6, s7, s8, s9,
-                                                                  data['pct_sum'].max(),
-                                                                  data['pct_sum'].tail(1).values[0]]],
-                                                                columns=['symbol', 'p5', 'p6', 'p7', 'p8', 'p9', 's5',
-                                                                         's6', 's7', 's8', 's9', 'pct_sum', 'pct_cur']))
-                industry_top = industry_top.sort_values(by=['pct_sum'], ascending=False)
-            except:
-                print 'error', symbol
-            # print industry_top
-        industry_tops = industry_tops.append(industry_top)
-    basic.index = basic['ts_code']
-    industry_tops.index = industry_tops['symbol']
-    industry_tops = industry_tops.join(basic, how='inner')
-    industry_tops = industry_tops[['pct_sum', 'pct_cur', 'p5', 'p6', 'p7', 'p8', 'p9', 's5', 's6',
-                                   's7', 's8', 's9', 'name', 'industry', 'list_date', 'area']]
-    print industry_tops
-    industry_tops.to_csv('industry_tops_1.csv')
-
-
-def get_industry_top():
-    industry_top = pd.read_csv('industry_tops_1.csv')
-    industry_top['pct_dif'] = industry_top['pct_sum'] - industry_top['pct_cur']
-    df = industry_top[['industry', 'pct_sum']].groupby(by=['industry']).agg(['mean', 'std', 'min', 'max'])
-    print df
-    plt.show()
-    # df = df.sort_values(by=['pct_dif'], ascending=False)
-    # df['industry'] = df.index
-    # m = pd.merge(df, industry_top, on=['industry', 'pct_dif'], how='inner')
-    # print m[['pct_sum', 'industry', 'name', 'pct_dif', 'pct_cur']]
-
 
 def get_daily_choose():
     a_daily = query_by_sql("SELECT * FROM Stock.a_daily_ind where  willr<-80  and date='2019-04-01' order by willr asc")
@@ -423,64 +379,47 @@ def get_daily_choose():
 
 
 if __name__ == '__main__':
+
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
     # save_a_daily_all(trade_date='20190408')
     # 保存所有买卖技术指标
     # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-08')
+    # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
+    save_industry_sat()
+
     # 画某时段涨幅图
     # test_draw_pct_sum()
     # print query_basic_stock()
-
+    # 涨幅榜
     # symbols = query_symbols("select symbol from a_daily_ind  where date = '2019-04-08' order by  pct_sum_3 desc limit 0,12")
     # show(4,3,symbols)
-    draw_willr_bar()
+    # willr整体分布图
+    # draw_willr_bar()
 
-    # engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    # try:
-    #     data = ts.get_report_data(2018, 4)
-    #     h_data.to_sql('report_data', engine, if_exists='append', index=False)
-    #     print 'loaded'
-    # except:
-    #     print 'loaded error'
-    # print data
-    # dates = pd.date_range('1/1/2019', '4/1/2019')
-    # for date in dates:
-    #     print date, type(date), date.strftime('%Y%m%d')
-    # test()
-    # industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
-    # industry_top = industry_top[industry_top['pct_sum'] < 30]
-    # industry_top = industry_top[industry_top['pct_sum'] > 20]
-    # industry_top = industry_top[industry_top['list_date'] < 20190101]
-    # industry_top = industry_top.sort_values(by=['industry'], ascending=False)
-    # industry_top = industry_top[industry_top['industry'] == '农业综合']
-    # print industry_top.info()
-    # show(1, 1, industry_top.index)
-    # get_industry_top()
+# engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+# try:
+#     data = ts.get_report_data(2018, 4)
+#     h_data.to_sql('report_data', engine, if_exists='append', index=False)
+#     print 'loaded'
+# except:
+#     print 'loaded error'
+# print data
+# dates = pd.date_range('1/1/2019', '4/1/2019')
+# for date in dates:
+#     print date, type(date), date.strftime('%Y%m%d')
+# test()
+# industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
+# industry_top = industry_top[industry_top['pct_sum'] < 30]
+# industry_top = industry_top[industry_top['pct_sum'] > 20]
+# industry_top = industry_top[industry_top['list_date'] < 20190101]
+# industry_top = industry_top.sort_values(by=['industry'], ascending=False)
+# industry_top = industry_top[industry_top['industry'] == '农业综合']
+# print industry_top.info()
+# show(1, 1, industry_top.index)
 
-    # draw_indkstry_k()
 
-    # pct()
-    # pro = ts.pro_api()
-    # basic = get_a_basic()
-    # for industry in basic['industry'].unique():
-    #     print industry
-    # print len(df)
-    # print df['industry'].value_counts()
-    # get_industry_top()
 
-    # a_daily = query_by_sql("select * from a_daily where date > 2019-04-01")
-    # a_daily['ts_code'] = a_daily['symbol']
-    #
-    # date_range = pd.date_range('20190101', '20190401')
-    # for dr in date_range:
-    #     print pd.to_datetime(dr, format='%d.%m.%Y')
-    #     print type(dr)
-    #     print  time.strftime("%Y%m%d", dr)
-    # a_daily = get_a_daily('20190401')
-    # print a_daily
-    # m = pd.merge(basic, a_daily, on=['ts_code'], how='inner')
-    # m = m[['industry', 'pct_chg']]
-    # m = m.groupby(by=['industry']).max()
-    # print m
+
+

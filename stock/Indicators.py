@@ -438,7 +438,6 @@ def AR(high, low, open, time_period):
 
 
 def sat(data):
-    sat = pd.DataFrame()
     p5 = len(data[data['pct'] > 5])
     p6 = len(data[data['pct'] > 6])
     p7 = len(data[data['pct'] > 7])
@@ -449,23 +448,28 @@ def sat(data):
     s7 = len(data[data['pct'] < -7])
     s8 = len(data[data['pct'] < -8])
     s9 = len(data[data['pct'] < -9])
-    for period in [3, 5, 15, 30, 60, 90]:
+    sat = pd.DataFrame(data=[[p5,p6,p7,p8,p9,s5,s6,s7,s8,s9]],columns=['p5','p6','p7','p8','p9','s5','s6','s7','s8','s9'])
+    for period in [3, 5, 10, 30, 60, 90]:
         sat['pct_sum_%d_max' % period] = data['pct_sum_%d' % period].max()
         sat['pct_sum_%d_min' % period] = data['pct_sum_%d' % period].min()
+    return sat
 
 
+# 5,8,13,21,34,55,89,144
 def ochl2buy(open, close, high, low, volume):
     data = pd.DataFrame()
-
     data['pct'] = PCT_CHANGE(close) * 100
     data['pct_ref'] = REF(PCT_CHANGE(close)) * 100
     data['vr'] = volume / REF(SMA(volume, 5), 1)
     data['vr_ref'] = REF(data['vr'])
     for period in [3, 5, 15, 30, 60, 90]:
         data['pct_sum_%d' % period] = SUM(data['pct'], period)
-    for period in [5, 10, 20, 30, 60, 120]:
+    for period in [5, 10, 30, 60, 120, 250]:
         data['sma_%d' % period] = SMA(close, period)
         data['ema_%d' % period] = EMA(close, period)
+    for period in [21, 34]:
+        data['min_%d' % period] = MIN(close, period)
+        data['max_%d' % period] = MAX(close, period)
     data['willr'] = WILLR(high, low, close, 6)
     data['willr_34'] = WILLR(high, low, close, 34)
     data['willr_89'] = WILLR(high, low, close, 89)
