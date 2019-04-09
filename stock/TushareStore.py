@@ -167,7 +167,9 @@ def query_a_daily_data_ind(symbol='', trade_date='', start_date='', end_date='')
     if (len(end_date) > 0) & (not end_date.isspace()):
         sql += "and date <= %(end_date)s "
     sql += "order by symbol asc , date asc "
+
     params = {'symbol': symbol, 'date': trade_date, 'start_date': start_date, 'end_date': end_date}
+    print sql, params
     return query_by_sql(sql, params)
 
 
@@ -181,7 +183,7 @@ def draw_buy(sql, row, col):
     show(row, col, query_symbols(sql))
 
 
-# 画涨幅累加对比图
+# 画涨幅累加对比图（多股重叠）
 def draw_pct_sum(symbols, names, start_date, end_date):
     # symbols = ['601128.SH', '601577.SH', '002936.SZ',
     #            '603323.SH', '002839.SZ', '002807.SZ',
@@ -207,6 +209,7 @@ def draw_pct_sum(symbols, names, start_date, end_date):
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
     plt.show()
 
+
 # 画涨幅对比图
 def draw_pct():
     pp5_list = []
@@ -228,6 +231,7 @@ def draw_pct():
     plt.plot(ps5_list)
     plt.show()
 
+
 def test_draw_pct_sum():
     basic = get_ts_basic()
     basic = basic[basic['industry'] == '银行']
@@ -235,40 +239,31 @@ def test_draw_pct_sum():
     names = basic['name']
     draw_pct_sum(symbols=symbols, names=names, start_date='2019-01-01', end_date='2019-04-30')
 
+# 画 willr整体分布图
+def draw_willr_bar():
+    data = query_by_sql(sql="select date,willr from a_daily_ind order by date asc")
+    row = 5
+    col = 4
+    fig = plt.figure(figsize=(8, 8))
+    i = 1
+    for date in data['date'].unique()[-20:]:
+        willr = data[data['date']==date]['willr']
+        willr = willr.sort_values()
+        willr.index = np.arange(1, len(willr) + 1)
+        ax = fig.add_subplot(row, col, i)
+        ax.bar(willr.index, willr)
+        ax.set_ylabel(date)
+        i = i + 1
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
+    plt.show()
+
+
 
 ###################################################
 
 
-def get_a_daily_data_ind_all():
-    con = db.connect('localhost', 'root', 'root', 'stock')
-    sql = """
-    select * from a_daily_ind 
-    """
-    df = pd.read_sql(sql, con=con)
-    df['date'] = df['date'].astype(str)
-    df.index = df['date']
-    df.drop(columns=['date'], inplace=True)
-    row = 7
-    col = 4
-    fig = plt.figure(figsize=(16, 16))
-    i = 1
-    for date in df.index[-20:]:
-        print date
-        ax = fig.add_subplot(row, col, i)
-        i = i + 1
-        # print df.loc['2019-02-' + i, 'willr'].describe()
-        # data = df.groupby(by='date').mean()
-        # print data.head(5)
-        # ax = plt.axes()
-        w = df.loc[date, 'willr']
-        w = w.sort_values()
-        w.index = np.arange(1, len(w) + 1)
-        ax.bar(w.index, w)
-        # ax.plot(data['willr'])
-        # ax.plot(data['willr_89'])
-        # ax = plt.twinx()
-        # ax.plot(data['bias'], c='green')
-    plt.show()
+
+
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -280,30 +275,30 @@ def show(row, col, symbols):
 
     i = 1
 
-    top = pd.DataFrame()
     for symbol in symbols:
-        data = query_a_daily_data_ind(table='a_daily_ind', symbol=symbol, trade_date='', start_date='2019-01-01',
-                                      end_date='2019-04-30', append_ind=False)
-        data['pct'] = data['close'].pct_change() * 100
-        data['pct_sum'] = data['pct'].cumsum()
+        data = query_a_daily_data_ind(symbol=symbol, trade_date='', start_date='2019-01-01',
+                                      end_date='2019-04-30')
+        print data
+        # data['pct'] = data['close'].pct_change() * 100
+        # data['pct_sum'] = data['pct'].cumsum()
 
         # if (data['pct_sum'].max() < 65):
         #     continue
         # if (data['pct_sum'].max() > 75):
         #     continue
-        print symbol, data['pct_sum'].max()
-        top = top.append(pd.DataFrame([[data['pct_sum'].max()]], index=[symbol]))
+        # print symbol, data['pct_sum'].max()
+        # top = top.append(pd.DataFrame([[data['pct_sum'].max()]], index=[symbol]))
         # print data.head()
         close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
         bias, pdi = data['bias'], data['pdi']
 
-        # ax = fig.add_subplot(row, col, i)
-        ax = fig.add_subplot(1, 1, 1)
+        ax = fig.add_subplot(row, col, i)
+        # ax = fig.add_subplot(1, 1, 1)
         ax.legend(labels=symbols, loc=2)
         # ax.plot(bias, c='grey')
         buy = close[
-            ind.LESS_THAN(willr, -88) &
-            ind.LESS_THAN(willr_34, -88)
+            ind.LESS_THAN(willr, -88)
+            # & ind.LESS_THAN(willr_34, -88)
             # ind.GREAT_THAN(bias, 3)
             # & ind.GREAT_THAN(willr_89, -28)
             # & ind.LESS_THAN(willr, -70)
@@ -316,17 +311,17 @@ def show(row, col, symbols):
             # & ind.BOTTOM(willr_34)
             # & ind.LESS_THAN(willr_89.shift(1), -88)
             # & ind.BOTTOM(willr_89)
-            ]
-        # ax.scatter(buy.index, buy, s=20, c='green')
+        ]
+        ax.scatter(buy.index, buy, s=20, c='green')
         # scaler = MinMaxScaler()
         # data['c'] = scaler.fit_transform(close.values.reshape(-1, 1))
 
-        ax.plot(data['pct_sum'])
+        ax.plot(close)
         # ax.plot(ind.MAX(close, 10), c='grey')
         # ax.plot(ind.MIN(close, 10), c='grey')
         # ax.set_xticks([])
         # ax.set_yticks([])
-        ax.set_yticks(np.arange(0, 81, 10))
+        # ax.set_yticks(np.arange(0, 81, 10))
         ax.set_ylabel(symbol)
         # ax.legend(labels=symbols, loc=2)
 
@@ -342,22 +337,13 @@ def show(row, col, symbols):
         i = i + 1
 
     # plt.legend()
-    basic = get_a_basic()
-    basic.index = basic['ts_code']
-    print top
-    print top.join(basic, how='inner')
+    # basic = get_a_basic()
+    # basic.index = basic['ts_code']
+    # print top
+    # print top.join(basic, how='inner')
     plt.legend(labels=symbols, loc=2)
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
     plt.show()
-
-
-def hot():
-    aa = pd.read_csv('aa.cvs')
-    aa = aa[aa['1'] > 30]
-    symbols = aa['0'].tolist()
-    row = 6
-    col = 4
-    show(row, col, symbols[0:row * col])
 
 
 # bias -3,3~19,29
@@ -436,20 +422,20 @@ def get_daily_choose():
     m.to_csv('daily.csv')
 
 
-
-
-
 if __name__ == '__main__':
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
     # save_a_daily_all(trade_date='20190408')
     # 保存所有买卖技术指标
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-04')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-08')
     # 画某时段涨幅图
     # test_draw_pct_sum()
     # print query_basic_stock()
 
+    # symbols = query_symbols("select symbol from a_daily_ind  where date = '2019-04-08' order by  pct_sum_3 desc limit 0,12")
+    # show(4,3,symbols)
+    draw_willr_bar()
 
     # engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
     # try:

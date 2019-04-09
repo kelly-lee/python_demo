@@ -459,6 +459,8 @@ def ochl2buy(open, close, high, low, volume):
 
     data['pct'] = PCT_CHANGE(close) * 100
     data['pct_ref'] = REF(PCT_CHANGE(close)) * 100
+    data['vr'] = volume / REF(SMA(volume, 5), 1)
+    data['vr_ref'] = REF(data['vr'])
     for period in [3, 5, 15, 30, 60, 90]:
         data['pct_sum_%d' % period] = SUM(data['pct'], period)
     for period in [5, 10, 20, 30, 60, 120]:
