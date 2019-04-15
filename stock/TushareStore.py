@@ -30,7 +30,6 @@ def get_ts_pro():
 def get_ts_daily(trade_date):
     pro = get_ts_pro()
     data = pro.daily(trade_date=trade_date)
-    print data.info()
     data = data[['trade_date', 'high', 'low', 'open', 'close', 'vol', 'ts_code', 'pct_chg']]
     data.rename(
         columns={'vol': 'volume', 'ts_code': 'symbol', 'trade_date': 'date'}, inplace=True)
@@ -126,7 +125,8 @@ def save_a_daily_data_ind(start_date, end_date):
         data.to_sql('a_daily_ind', engine, if_exists='append', index=False)
         print symbol, 'loaded'
 
-#统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
+
+# 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
 def save_industry_sat():
     industry_sats = pd.DataFrame()
     basic_stock = query_basic_stock()
@@ -140,7 +140,7 @@ def save_industry_sat():
             print symbol
             # try:
             data = query_a_daily_data_ind(symbol=symbol, trade_date='', start_date='2019-01-01',
-                                          end_date='2019-04-08')
+                                          end_date='2019-04-30')
             sat = ind.sat(data)
             sat['symbol'] = symbol
             industry_sat = industry_sat.append(sat)
@@ -151,9 +151,18 @@ def save_industry_sat():
         industry_sats = industry_sats.append(industry_sat)
     basic_stock['symbol'] = basic_stock['ts_code']
     industry_sats = pd.merge(basic_stock, industry_sats, on=['symbol'], how='inner')
+    industry_sats.to_csv('industry_sats.csv')
     engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    industry_sats.to_sql('industry_sats', engine, if_exists='append', index=False)
-    industry_sats.to_csv('industry_tops_2.csv')
+    # industry_sats.to_sql('industry_sats', engine, if_exists='append', index=False)
+
+    industry_sats_1 = industry_sats[0:1000]
+    industry_sats_1.to_sql('industry_sats', engine, if_exists='append', index=False)
+    industry_sats_2 = industry_sats[1000:2000]
+    industry_sats_2.to_sql('industry_sats', engine, if_exists='append', index=False)
+    industry_sats_3 = industry_sats[2000:3000]
+    industry_sats_3.to_sql('industry_sats', engine, if_exists='append', index=False)
+    industry_sats_4 = industry_sats[3000:]
+    industry_sats_4.to_sql('industry_sats', engine, if_exists='append', index=False)
 
 
 def query_by_sql(sql='', params={}):
@@ -219,21 +228,24 @@ def draw_pct_sum(symbols, names, start_date, end_date):
     #            '601166.SH', '601997.SH', '601998.SH','600908.SH','002948.SZ']
     font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=10)
     fig = plt.figure(figsize=(8, 8))
-    i = 1
+    i = -1
+    legend_names = []
     for symbol in symbols:
+        i = i + 1
         data = query_a_daily_data_ind(symbol=symbol, trade_date='', start_date=start_date,
                                       end_date=end_date)
         data['pct_sum'] = data['pct'].cumsum()
-        # if (data['pct_sum'].max() < 30):
+        if (data['pct_sum'].max() <= 50):
+            continue
+        # if (data['pct_sum'].max() > 50):
         #     continue
-        # if (data['pct_sum'].max() > 100):
-        #     continue
+        legend_names.append(names.iloc[i])
         print symbol, data['pct_sum'].max()
         ax = fig.add_subplot(1, 1, 1)
         ax.plot(data['pct_sum'])
         ax.set_yticks(np.arange(0, 80, 10))
-        i = i + 1
-        ax.legend(labels=names, loc=2, prop=font)
+
+        ax.legend(labels=legend_names, loc=2, prop=font)
     plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
     plt.show()
 
@@ -262,7 +274,7 @@ def draw_pct():
 
 def test_draw_pct_sum():
     basic = get_ts_basic()
-    basic = basic[basic['industry'] == '银行']
+    basic = basic[basic['industry'] == '生物制药']
     symbols = basic['ts_code']
     names = basic['name']
     draw_pct_sum(symbols=symbols, names=names, start_date='2019-01-01', end_date='2019-04-30')
@@ -367,7 +379,6 @@ def show(row, col, symbols):
     plt.show()
 
 
-
 def get_daily_choose():
     a_daily = query_by_sql("SELECT * FROM Stock.a_daily_ind where  willr<-80  and date='2019-04-01' order by willr asc")
     a_daily['ts_code'] = a_daily['symbol']
@@ -379,24 +390,35 @@ def get_daily_choose():
 
 
 if __name__ == '__main__':
-
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
-    # save_a_daily_all(trade_date='20190408')
+    # save_a_daily_all(trade_date='20190411')
     # 保存所有买卖技术指标
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-08')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-11')
     # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
-    save_industry_sat()
+    # save_industry_sat()
 
     # 画某时段涨幅图
-    # test_draw_pct_sum()
+    test_draw_pct_sum()
     # print query_basic_stock()
     # 涨幅榜
     # symbols = query_symbols("select symbol from a_daily_ind  where date = '2019-04-08' order by  pct_sum_3 desc limit 0,12")
     # show(4,3,symbols)
     # willr整体分布图
     # draw_willr_bar()
+
+    # basic_stock = query_basic_stock()
+    # basic_stock = basic_stock.sort_values(by=['industry'])
+    #
+    # for industry in basic_stock['industry'].unique():
+    #     industry_stock = basic_stock[basic_stock['industry'] == industry]
+    #     print '----' ,industry
+    #     # for name in industry_stock:
+    #     #     print name
+    #     for index , row  in industry_stock.iterrows():
+    #         print row['name'] ,row['ts_code']
+
 
 # engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
 # try:
@@ -418,8 +440,3 @@ if __name__ == '__main__':
 # industry_top = industry_top[industry_top['industry'] == '农业综合']
 # print industry_top.info()
 # show(1, 1, industry_top.index)
-
-
-
-
-

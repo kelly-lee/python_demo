@@ -449,7 +449,7 @@ def sat(data):
     s8 = len(data[data['pct'] < -8])
     s9 = len(data[data['pct'] < -9])
     sat = pd.DataFrame(data=[[p5,p6,p7,p8,p9,s5,s6,s7,s8,s9]],columns=['p5','p6','p7','p8','p9','s5','s6','s7','s8','s9'])
-    for period in [3, 5, 10, 30, 60, 90]:
+    for period in [3, 5, 15, 30, 60, 90]:
         sat['pct_sum_%d_max' % period] = data['pct_sum_%d' % period].max()
         sat['pct_sum_%d_min' % period] = data['pct_sum_%d' % period].min()
     return sat
