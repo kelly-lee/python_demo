@@ -324,6 +324,10 @@ def show(row, col, symbols):
         # print data.head()
         close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
         bias, pdi = data['bias'], data['pdi']
+        diff, dea = data['macd'], data['macd_signal']
+
+        ax.bar(close.index, 1, facecolor='r')
+        ax.bar(close.index, 1, facecolor='g')
 
         ax = fig.add_subplot(row, col, i)
         # ax = fig.add_subplot(1, 1, 1)
@@ -389,24 +393,93 @@ def get_daily_choose():
     m.to_csv('daily.csv')
 
 
+def d():
+    data = query_a_daily_data_ind(symbol='000651.SZ', trade_date='', start_date='2018-01-01',
+                                  end_date='2019-04-30')
+    close, low, high, willr, willr_34, willr_89, = data['close'], data['low'], data['high'], data['willr'], data[
+        'willr_34'], data['willr_89']
+    bias, pdi = data['bias'], data['pdi']
+    ma3, ma20, ma60 = data['sma_3'], data['sma_20'], data['sma_60']
+    diff, dea = data['macd'], data['macd_signal']
+
+    print data
+    plt.plot(close)
+    # plt.plot(ma3)
+    plt.plot(ma20)
+    plt.plot(ma60)
+    ax = plt.twinx()
+    # # 强上涨
+    # ax.bar(data[ind.UP(ma3) & (0 < dea) & (dea < diff)].index, 1, facecolor='darkred', width=1,
+    #        alpha=0.7)
+    # # 强下跌
+    # ax.bar(data[ind.DOWN(ma3) & (diff < dea) & (dea < 0)].index, 1, facecolor='darkgreen', width=1,
+    #        alpha=0.7)
+    # # 弱下跌
+    # ax.bar(data[ind.DOWN(ma3) & (0 < diff) & (diff < dea)].index, 1, facecolor='yellowgreen', width=1,
+    #        alpha=0.7)
+    # # 弱上涨
+    # ax.bar(data[ind.UP(ma3) & (dea < diff) & (diff < 0)].index, 1, facecolor='firebrick',
+    #        width=1, alpha=0.7)
+    # # 努力上升
+    # ax.bar(data[ind.BETWEEN(ma60, low, high) & ind.UP(ma3) & (dea < diff) & (diff < 0)].index, 1, facecolor='pink',
+    #        width=1, alpha=0.7)
+    # # 努力下跌
+    # ax.bar(data[ind.BETWEEN(ma60, low, high) & ind.DOWN(ma3) & (diff < 0) & (0 < dea)].index, 1, facecolor='lightgreen',
+    #        width=1, alpha=0.7)
+
+    ax.bar(data[ind.DOWN(ma20) & ind.UP(dea)].index, 1, facecolor='grey', width=1,
+           alpha=0.7)
+    ax.bar(data[ind.UP(ma20) & ind.DOWN(dea)].index, 1, facecolor='grey', width=1,
+           alpha=0.7)
+    #
+    #
+    # # 零上跌超底背离 努力下跌+弱下跌
+    # ax.bar(data[(close < ma60) & (ma60 < ma20) & (0 < diff) & (diff > dea)].index, 1, facecolor='grey', width=1,
+    #        alpha=0.7)
+    # # 零下涨超顶背离  努力上升+弱上升
+    # ax.bar(data[(ma20 < ma60) & (ma60 < close) & (diff < dea) & (dea < 0)].index, 1, facecolor='grey', width=1,
+    #        alpha=0.7)
+    # # 跨零轴超前底背离 努力下跌+ 强下跌
+    # ax.bar(data[(close < ma60) & (ma60 < ma20) & (diff < dea) & (dea < 0)].index, 1, facecolor='grey', width=1,
+    #        alpha=0.7)
+    # # 跨零轴超前顶背离  努力上升+强上升
+    # ax.bar(data[(ma20 < ma60) & (ma60 < close) & (0 < dea) & (dea < diff)].index, 1, facecolor='rosybrown', width=1,
+    #        alpha=0.7)
+    # # 顶部反背离  强下跌 弱上涨
+    # ax.bar(data[(close < ma20) & (ma20 < ma60) & (dea < diff) & (diff < 0)].index, 1, facecolor='grey', width=1,
+    #        alpha=0.7)
+    # # 底部反背离  弱下跌 弱下跌
+    # ax.bar(data[(ma60 < close) & (close < ma20) & (0 < diff) & (diff < dea)].index, 1, facecolor='grey', width=1,
+    #        alpha=0.7)
+    plt.show()
+
+
 if __name__ == '__main__':
+    d()
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
-    # save_a_daily_all(trade_date='20190411')
+    # save_a_daily_all(trade_date='20190416')
     # 保存所有买卖技术指标
-    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-11')
+    # save_a_daily_data_ind(start_date='2018-10-01', end_date='2019-04-16')
     # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
     # save_industry_sat()
 
     # 画某时段涨幅图
-    test_draw_pct_sum()
+    # test_draw_pct_sum()
     # print query_basic_stock()
     # 涨幅榜
     # symbols = query_symbols("select symbol from a_daily_ind  where date = '2019-04-08' order by  pct_sum_3 desc limit 0,12")
     # show(4,3,symbols)
     # willr整体分布图
     # draw_willr_bar()
+    # basic = query_basic_stock()
+    # areas = basic['industry']
+    # for area in areas.unique():
+    #     print area
+    # for index,row in  basic.iterrows():
+    #     areas.append( row['area'])
+    # areas = set(areas)
 
     # basic_stock = query_basic_stock()
     # basic_stock = basic_stock.sort_values(by=['industry'])
@@ -418,7 +491,6 @@ if __name__ == '__main__':
     #     #     print name
     #     for index , row  in industry_stock.iterrows():
     #         print row['name'] ,row['ts_code']
-
 
 # engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
 # try:

@@ -16,15 +16,15 @@ K接触MA60  DIFF，0轴交叉
 不同步不健康趋势
 
 
-
-Z0>DIFF>DEA   弱上涨
-MA60>K>MA20
-
 DIFF>Z0>DEA   待定
+MA60>K>MA20 Z0>DIFF>DEA   弱上涨
+K>MA20>MA60 DIFF>DEA>Z0  强上涨
+
+
 K>MA60>MA20
 
 
-K>MA20>MA60 DIFF>DEA>Z0  强上涨
+
 K>MA20>MA60 DEA>DIFF>Z0  顶背离
 
 

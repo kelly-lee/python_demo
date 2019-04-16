@@ -24,6 +24,14 @@ import numpy as np
 # ind = Indicator(data)
 # print DIFF()
 
+def UP(price):
+    return price >= REF(price)
+
+
+def DOWN(price):
+    return price < REF(price)
+
+
 def LESS_THAN(price, line):
     return price <= line
 
@@ -448,7 +456,8 @@ def sat(data):
     s7 = len(data[data['pct'] < -7])
     s8 = len(data[data['pct'] < -8])
     s9 = len(data[data['pct'] < -9])
-    sat = pd.DataFrame(data=[[p5,p6,p7,p8,p9,s5,s6,s7,s8,s9]],columns=['p5','p6','p7','p8','p9','s5','s6','s7','s8','s9'])
+    sat = pd.DataFrame(data=[[p5, p6, p7, p8, p9, s5, s6, s7, s8, s9]],
+                       columns=['p5', 'p6', 'p7', 'p8', 'p9', 's5', 's6', 's7', 's8', 's9'])
     for period in [3, 5, 15, 30, 60, 90]:
         sat['pct_sum_%d_max' % period] = data['pct_sum_%d' % period].max()
         sat['pct_sum_%d_min' % period] = data['pct_sum_%d' % period].min()
@@ -464,7 +473,7 @@ def ochl2buy(open, close, high, low, volume):
     data['vr_ref'] = REF(data['vr'])
     for period in [3, 5, 15, 30, 60, 90]:
         data['pct_sum_%d' % period] = SUM(data['pct'], period)
-    for period in [5, 10, 30, 60, 120, 250]:
+    for period in [3, 5, 10, 20, 30, 60, 120, 250]:
         data['sma_%d' % period] = SMA(close, period)
         data['ema_%d' % period] = EMA(close, period)
     for period in [21, 34]:
@@ -476,6 +485,10 @@ def ochl2buy(open, close, high, low, volume):
     pdi, mdi = DI(high, low, close, 14)
     data['pdi'] = pdi
     data['bias'] = BIAS(close, 24)
+    macd, macdsignal, macdhist = MACD(close, 12, 26, 9)
+    data['macd'] = macd
+    data['macd_signal'] = macdsignal
+    data['macd_hist'] = macdhist
     return data
 
 
