@@ -6,6 +6,43 @@
 
 财务选股
 
+K=DIFF
+MA20=DEA
+MA60=Z0
+
+K接触MA20  DIFF，DEA交叉
+K接触MA60  DIFF，0轴交叉
+同步健康趋势
+不同步不健康趋势
+
+
+
+Z0>DIFF>DEA   弱上涨
+MA60>K>MA20
+
+DIFF>Z0>DEA   待定
+K>MA60>MA20
+
+
+K>MA20>MA60 DIFF>DEA>Z0  强上涨
+K>MA20>MA60 DEA>DIFF>Z0  顶背离
+
+
+
+DEA>DIFF>Z0   弱下跌
+DEA>Z0>DIFF   待定
+Z0>DEA>DIFF   强下跌
+
+MA60>MA20>K  DEA>Z0>DIFF  衰弱背离
+
+
+背离 失去了从容的快，太逞强
+超前 反背离
+衰竭背离
+标准背离
+次高低点背离
+
+
 roe
 伊利股份 600887
 苏泊尔 002032
