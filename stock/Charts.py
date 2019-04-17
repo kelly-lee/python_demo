@@ -71,14 +71,14 @@ def drawBBANDS(ax, data, period=20):
 
 def drawSMA(ax, data, periods=[5, 10, 20, 30, 60, 120]):
     for period in periods:
-        if data.__contains__('sma%d' % period):
-            sma = data['sma%d' % period]
+        if data.__contains__('sma_%d' % period):
+            sma = data['sma_%d' % period]
         elif data.__contains__('sma'):
             sma = data['sma']
         else:
             close = data['close']
             sma = ind.SMA(close, period)
-        ax.plot(sma, label='sma%d' % period, linewidth=1)
+        ax.plot(sma, label='sma_%d' % period, linewidth=1)
 
 
 def drawEMA(ax, data, periods=[5, 10, 20, 30, 60, 120]):
@@ -189,19 +189,20 @@ def drawRSI(ax, data, periods=[6, 12, 24], hlines=[20, 50, 80]):
     ax.set_ylabel('RSI')
 
 
-def drawMACD(ax, data, periods=[12, 16, 9]):
+def drawMACD(ax, data, periods=[12, 26, 9]):
     close = data['close']
-    if data.__contains__('macd') & data.__contains__('macd_signal') & data.__contains__('macd_histogram'):
+    if data.__contains__('macd') & data.__contains__('macd_signal') & data.__contains__('macd_hist'):
         macd = data['macd']
         macd_signal = data['macd_signal']
-        macd_histogram = data['macd_histogram']
-    else:
-        macd, macd_signal, macd_histogram = ind.MACD(close, fast_period=periods[0], slow_period=periods[1],
-                                                     signal_period=periods[2])
+        macd_histogram = data['macd_hist']
+    # else:
+    #     macd, macd_signal, macd_histogram = ind.MACD(close, fast_period=periods[0], slow_period=periods[1],
+    #                                                  signal_period=periods[2])
     ax.plot(macd, label='macd%d' % periods[0])
     ax.plot(macd_signal, label='macd_singal%d' % periods[1])
     ax.bar(close.index, macd_histogram.clip_lower(0), facecolor='r')
     ax.bar(close.index, macd_histogram.clip_upper(0), facecolor='g')
+    drawHline(ax, [0])
     ax.set_ylabel('MACD')
 
 

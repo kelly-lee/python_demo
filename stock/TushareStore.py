@@ -18,6 +18,7 @@ from sklearn import tree
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 from matplotlib.font_manager import FontProperties
+import Charts as charts
 
 
 def get_ts_pro():
@@ -303,80 +304,37 @@ def draw_willr_bar():
 
 
 # 根据股票代码显示股价
-def show(row, col, symbols):
-    fig = plt.figure(figsize=(12, 8))
-
-    i = 1
-
+def show(row, col, symbols, names, start_date='2019-01-01', end_date='2019-04-30'):
+    font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=10)
+    fig = plt.figure(figsize=(24, 16))
+    i = 0
     for symbol in symbols:
-        data = query_a_daily_data_ind(symbol=symbol, trade_date='', start_date='2019-01-01',
-                                      end_date='2019-04-30')
-        print data
-        # data['pct'] = data['close'].pct_change() * 100
-        # data['pct_sum'] = data['pct'].cumsum()
+        data = query_a_daily_data_ind(symbol=symbol, trade_date='', start_date=start_date,
+                                      end_date=end_date)
+        ax = fig.add_subplot(row, col, i / col * 2 * col + i % col + 1)
+        # ax.plot(data['close'])
+        charts.drawK(ax, data)
+        charts.drawSMA(ax, data, periods=[3, 20, 60])
+        charts.drawDate(ax, data)
+        ax.set_ylabel(names[i], fontproperties=font)
+        show_buy(ax, data, 'k')
+        show_trend(ax, data)
+        ax = fig.add_subplot(row, col, i / col * 2 * col + i % col + col + 1)
+        charts.drawMACD(ax, data)
+        # charts.drawDate(ax, data)
 
-        # if (data['pct_sum'].max() < 65):
-        #     continue
-        # if (data['pct_sum'].max() > 75):
-        #     continue
-        # print symbol, data['pct_sum'].max()
-        # top = top.append(pd.DataFrame([[data['pct_sum'].max()]], index=[symbol]))
-        # print data.head()
-        close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
-        bias, pdi = data['bias'], data['pdi']
-        diff, dea = data['macd'], data['macd_signal']
+        ax.plot(data['macd'], label='diff')
+        ax.plot(data['macd_signal'], label='dea')
+        ax.axhline(y=0, color='grey', linestyle="--", linewidth=1)
+        show_buy(ax, data, 'macd')
+        show_trend(ax, data)
 
-        ax = fig.add_subplot(row, col, i)
-        # ax = fig.add_subplot(1, 1, 1)
-        ax.legend(labels=symbols, loc=2)
-        # ax.plot(bias, c='grey')
-        buy = close[
-            ind.LESS_THAN(willr, -88)
-            # & ind.LESS_THAN(willr_34, -88)
-            # ind.GREAT_THAN(bias, 3)
-            # & ind.GREAT_THAN(willr_89, -28)
-            # & ind.LESS_THAN(willr, -70)
-
-            # ind.LESS_THAN(bias.shift(1), -3) & ind.BOTTOM(bias) &
-            # & ind.GREAT_THAN(willr, -40)
-            # & ind.LESS_THAN(bias.shift(), 3)
-            # & ind.BOTTOM(willr)
-            # & ind.LESS_THAN(willr_34.shift(1), -88)
-            # & ind.BOTTOM(willr_34)
-            # & ind.LESS_THAN(willr_89.shift(1), -88)
-            # & ind.BOTTOM(willr_89)
-        ]
-        ax.scatter(buy.index, buy, s=20, c='green')
-        # scaler = MinMaxScaler()
-        # data['c'] = scaler.fit_transform(close.values.reshape(-1, 1))
-
-        ax.plot(close)
-        # ax.plot(ind.MAX(close, 10), c='grey')
-        # ax.plot(ind.MIN(close, 10), c='grey')
+        # ax.set_ylabel(symbol)
+        # ax = plt.twinx()
         # ax.set_xticks([])
         # ax.set_yticks([])
-        # ax.set_yticks(np.arange(0, 81, 10))
-        ax.set_ylabel(symbol)
-        # ax.legend(labels=symbols, loc=2)
-
-        ax = plt.twinx()
-        ax.set_xticks([])
-        ax.set_yticks([])
-        # ax.plot(bias)
-
-        # ax.plot(willr)
-        # ax.plot(willr_34)
-        # ax.plot(willr_89)
-
         i = i + 1
-
-    # plt.legend()
-    # basic = get_a_basic()
-    # basic.index = basic['ts_code']
-    # print top
-    # print top.join(basic, how='inner')
-    plt.legend(labels=symbols, loc=2)
-    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.3, wspace=0.3)
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05, hspace=0.1, wspace=0.1)
     plt.show()
 
 
@@ -390,43 +348,66 @@ def get_daily_choose():
     m.to_csv('daily.csv')
 
 
-def dd(ax, data, type):
+def show_buy(ax, data, type):
     close, low, high = data['close'], data['low'], data['high']
-    ma3, ma5, ma20, ma60 = close, data['sma_5'], data['sma_20'], data['sma_60']
+    ma3, ma5, ma20, ma60 = data['sma_3'], data['sma_5'], data['sma_20'], data['sma_60']
     diff, dea = data['macd'], data['macd_signal']
+    close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
+    bias, pdi = data['bias'], data['pdi']
+    buy = ind.LESS_THAN(willr, -88)
+    # & ind.LESS_THAN(willr_34, -88)
+    # ind.GREAT_THAN(bias, 3)
+    # & ind.GREAT_THAN(willr_89, -28)
+    # & ind.LESS_THAN(willr, -70)
+
+    # ind.LESS_THAN(bias.shift(1), -3) & ind.BOTTOM(bias) &
+    # & ind.GREAT_THAN(willr, -40)
+    # & ind.LESS_THAN(bias.shift(), 3)
+    # & ind.BOTTOM(willr)
+    # & ind.LESS_THAN(willr_34.shift(1), -88)
+    # & ind.BOTTOM(willr_34)
+    # & ind.LESS_THAN(willr_89.shift(1), -88)
+    # & ind.BOTTOM(willr_89)
 
     buy = ind.TOUCH(close, ma20) & ind.TOUCH(diff, dea, 0.3)
 
-    #diff,dea 死叉 close>ma20 会上涨 close<ma20 会下跌
+    # diff,dea 死叉 close>ma20 会上涨 close<ma20 会下跌
     # 上升趋势 diff,dea,close,ma20 同时死叉 最佳买点 会涨
     # 下跌趋势 diff,dea,close,ma20 同时金叉 反弹最高点，会跌
 
-    #上升趋势 diff,dea,close,ma20 同时金叉 最佳买点 会涨
+    # 上升趋势 diff,dea,close,ma20 同时金叉 最佳买点 会涨
     buy = ind.DEAD_CROSS(diff, dea)
 
-
     # diff,dea 金叉，close>ma20 会震荡回调 close<ma20 会补涨
-    #上升趋势 diff,dea,close,ma20 同时金叉 最佳买点 会涨
-    #下跌趋势 diff,dea,close,ma20 同时金叉 反弹最高点，会跌
-    # buy = ind.GOLDEN_CROSS(diff, dea)
-    print buy
+    # 上升趋势 diff,dea,close,ma20 同时金叉 最佳买点 会涨
+    # 下跌趋势 diff,dea,close,ma20 同时金叉 反弹最高点，会跌
+    # buy = ind.GOLDEN_CROSS(diff, dea) | ind.DEAD_CROSS(diff, dea)
+
     if type == 'k':
         ax.scatter(close[buy].index, close[buy], s=20, c='black')
     else:
         ax.scatter(diff[buy].index, diff[buy], s=20, c='black')
+
+
+def show_trend(ax, data):
+    close, low, high = data['close'], data['low'], data['high']
+    ma3, ma5, ma20, ma60 = data['sma_3'], data['sma_5'], data['sma_20'], data['sma_60']
+    diff, dea = data['macd'], data['macd_signal']
+
     ax = plt.twinx()
+    ax.set_yticks([])
     # 强上涨
     ax.bar(data[ind.UP(ma3) & (0 < dea) & (dea < diff)].index, 1, facecolor='darkred', width=1,
-           alpha=0.7)
-    # # 强下跌
-    # ax.bar(data[ind.DOWN(ma3) & (diff < dea) & (dea < 0)].index, 1, facecolor='darkgreen', width=1,
-    #        alpha=0.7)
-    # # 弱下跌
-    # ax.bar(data[ind.DOWN(ma3) & (0 < diff) & (diff < dea)].index, 1, facecolor='yellowgreen', width=1,
-    #        alpha=0.7)
+           alpha=0.5)
+    # 强下跌
+    ax.bar(data[ind.DOWN(ma3) & (diff < dea) & (dea < 0)].index, 1, facecolor='darkgreen', width=1,
+           alpha=0.5)
+    # 弱下跌
+    ax.bar(data[ind.DOWN(ma3) & (0 < diff) & (diff < dea)].index, 1, facecolor='yellowgreen', width=1,
+           alpha=0.5)
     # 弱上涨
-    ax.bar(data[ind.UP(ma3) & (dea < diff) & (diff < 0)].index, 1, facecolor='firebrick',
-           width=1, alpha=0.7)
+    ax.bar(data[ind.UP(ma3) & (dea < diff) & (diff < 0)].index, 1, facecolor='pink',
+           width=1, alpha=0.5)
     # # 努力上升
     # ax.bar(data[ind.BETWEEN(ma60, low, high) & ind.UP(ma3) & (dea < diff) & (diff < 0)].index, 1, facecolor='pink',
     #        width=1, alpha=0.7)
@@ -481,72 +462,40 @@ def d():
     # plt.plot(ma3)
     ax.plot(ma20)
     ax.plot(ma60)
-    dd(ax, data, 'k')
+    # dd(ax, data, 'k')
 
     ax = fig.add_subplot(2, 1, 2)
     ax.plot(diff, label='diff')
     ax.plot(dea, label='dea')
     ax.axhline(y=0, color='grey', linestyle="--", linewidth=1)
     ax.set_ylabel('MACD')
-    dd(ax, data, 'diff')
+    # dd(ax, data, 'diff')
     plt.show()
 
 
 if __name__ == '__main__':
-    d()
+    # d()
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
-    # save_a_daily_all(trade_date='20190416')
+    # save_a_daily_all(trade_date='20190417')
     # 保存所有买卖技术指标
-    # save_a_daily_data_ind(start_date='2000-01-01', end_date='2019-04-16')
+    save_a_daily_data_ind(start_date='2000-01-01', end_date='2019-04-17')
     # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
     # save_industry_sat()
 
     # 画某时段涨幅图
     # test_draw_pct_sum()
     # print query_basic_stock()
-    # 涨幅榜
-    # symbols = query_symbols("select symbol from a_daily_ind  where date = '2019-04-08' order by  pct_sum_3 desc limit 0,12")
-    # show(4,3,symbols)
+    # 根据sql显示K线图面板
+    # sql = """
+    # select symbol,name
+    # from a_daily_ind
+    # inner join stock_basic  on a_daily_ind.symbol = stock_basic.ts_code
+    # where date = '2019-04-15' order by  pct_sum_3 asc limit 1800,24
+    # """
+    # stocks = query_by_sql(sql)
+    # print stocks
+    # show(8, 6, stocks['symbol'].tolist(), stocks['name'].tolist())
     # willr整体分布图
     # draw_willr_bar()
-    # basic = query_basic_stock()
-    # areas = basic['industry']
-    # for area in areas.unique():
-    #     print area
-    # for index,row in  basic.iterrows():
-    #     areas.append( row['area'])
-    # areas = set(areas)
-
-    # basic_stock = query_basic_stock()
-    # basic_stock = basic_stock.sort_values(by=['industry'])
-    #
-    # for industry in basic_stock['industry'].unique():
-    #     industry_stock = basic_stock[basic_stock['industry'] == industry]
-    #     print '----' ,industry
-    #     # for name in industry_stock:
-    #     #     print name
-    #     for index , row  in industry_stock.iterrows():
-    #         print row['name'] ,row['ts_code']
-
-    # engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
-    # try:
-    #     data = ts.get_report_data(2018, 4)
-    #     h_data.to_sql('report_data', engine, if_exists='append', index=False)
-    #     print 'loaded'
-    # except:
-    #     print 'loaded error'
-    # print data
-    # dates = pd.date_range('1/1/2019', '4/1/2019')
-    # for date in dates:
-    #     print date, type(date), date.strftime('%Y%m%d')
-    # test()
-    # industry_top = pd.read_csv("industry_tops_1.csv", index_col=0)
-    # industry_top = industry_top[industry_top['pct_sum'] < 30]
-    # industry_top = industry_top[industry_top['pct_sum'] > 20]
-    # industry_top = industry_top[industry_top['list_date'] < 20190101]
-    # industry_top = industry_top.sort_values(by=['industry'], ascending=False)
-    # industry_top = industry_top[industry_top['industry'] == '农业综合']
-    # print industry_top.info()
-    # show(1, 1, industry_top.index)
