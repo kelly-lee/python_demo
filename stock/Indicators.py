@@ -23,6 +23,9 @@ import numpy as np
 #
 # ind = Indicator(data)
 # print DIFF()
+def TOUCH(price, line, p=0.01):
+    return BETWEEN(price, line * (1 - p), line * (1 + p))
+
 
 def UP(price):
     return price >= REF(price)
@@ -489,6 +492,8 @@ def ochl2buy(open, close, high, low, volume):
     data['macd'] = macd
     data['macd_signal'] = macdsignal
     data['macd_hist'] = macdhist
+    data['macd_min'] = MIN(macd, 10)
+    data['macd_max'] = MAX(macd, 10)
     return data
 
 
