@@ -126,6 +126,17 @@ def save_a_daily_data_ind(start_date, end_date):
         data.to_sql('a_daily_ind', engine, if_exists='append', index=False)
         print symbol, 'loaded'
 
+def save_a_daily_data_sat(start_date, end_date):
+    engine = create_engine('mysql://root:root@127.0.0.1:3306/Stock?charset=utf8')
+    symbols = query_symbols()
+    for symbol in symbols:
+        data = query_a_daily_data(symbol, trade_date='', start_date=start_date, end_date=end_date)
+        open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
+        ochl2ind = ind.ochl2sat(open, close, high, low, volume)
+        data = data.join(ochl2ind, how='left')
+        data.to_sql('a_daily_sat', engine, if_exists='append', index=False)
+        print symbol, 'loaded'
+
 
 # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
 def save_industry_sat():
@@ -478,9 +489,11 @@ if __name__ == '__main__':
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
-    # save_a_daily_all(trade_date='20190417')
+    # save_a_daily_all(trade_date='20190418')
     # 保存所有买卖技术指标
-    save_a_daily_data_ind(start_date='2000-01-01', end_date='2019-04-17')
+    # save_a_daily_data_ind(start_date='2000-01-01', end_date='2019-04-17')
+    # 保存所有买卖技术指标
+    save_a_daily_data_sat(start_date='2018-01-01', end_date='2019-04-17')
     # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
     # save_industry_sat()
 
@@ -489,10 +502,22 @@ if __name__ == '__main__':
     # print query_basic_stock()
     # 根据sql显示K线图面板
     # sql = """
-    # select symbol,name
+    # select symbol,name,industry,pct,close>sma_60
     # from a_daily_ind
     # inner join stock_basic  on a_daily_ind.symbol = stock_basic.ts_code
-    # where date = '2019-04-15' order by  pct_sum_3 asc limit 1800,24
+    # where 1=1
+    # and date = '2019-04-10'
+    # and symbol in (
+    # select symbol
+    # from a_daily_ind
+    # where 1=1
+    # and date = '2019-04-9'
+    # and close<sma_60
+    # and sma_60<sma_20
+    # and (close-sma_60)/close*100>-3
+    # and (close-sma_20)/close*100>-3
+    # )
+    # order by pct asc
     # """
     # stocks = query_by_sql(sql)
     # print stocks

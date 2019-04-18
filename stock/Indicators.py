@@ -43,6 +43,10 @@ def GREAT_THAN(price, line):
     return price >= line
 
 
+def DIFF_PCT(price, base):
+    return (price - base) / price * 100.0
+
+
 def BETWEEN(price, low, high):
     return (price >= low) & (price <= high)
 
@@ -468,6 +472,72 @@ def sat(data):
 
 
 # 5,8,13,21,34,55,89,144
+def ochl2sat(open, close, high, low, volume):
+    data = pd.DataFrame()
+    data['pct'] = PCT_CHANGE(close) * 100
+    data['pct_ref'] = REF(PCT_CHANGE(close)) * 100
+    data['pct_next'] = REF(PCT_CHANGE(close), -1) * 100
+
+    data['vr'] = volume / REF(SMA(volume, 5), 1)
+    data['vr_ref'] = REF(data['vr'])
+    data['dp_vr'] = DIFF_PCT(data['vr_ref'], data['vr'])
+
+    for period in [3, 5]:
+        data['pct_sum_%d' % period] = SUM(data['pct'], period)
+        data['pct_sum_next_%d' % period] = SUM(REF(data['pct'], -period), period)
+
+    for period in [14, 21]:
+        data['min_%d' % period] = MIN(close, period)
+        data['max_%d' % period] = MAX(close, period)
+    data['willr'] = WILLR(high, low, close, 6)
+    data['willr_34'] = WILLR(high, low, close, 34)
+    data['willr_89'] = WILLR(high, low, close, 89)
+    pdi, mdi = DI(high, low, close, 14)
+    data['pdi'] = pdi
+    data['bias'] = BIAS(close, 24)
+
+    for period in [3, 5, 20, 60]:
+        data['sma_%d' % period] = SMA(close, period)
+    macd, macdsignal, macdhist = MACD(close, 12, 26, 9)
+    data['macd'] = macd
+    data['macd_signal'] = macdsignal
+    data['macd_hist'] = macdhist
+    data['macd_min_14'] = MIN(macd, 14)
+    data['macd_max_14'] = MAX(macd, 14)
+    # 金叉 close,ma20,ma60
+    data['gc_c2'] = GOLDEN_CROSS(close, data['sma_20'])
+    data['gc_c6'] = GOLDEN_CROSS(close, data['sma_60'])
+    data['gc_26'] = GOLDEN_CROSS(data['sma_20'], data['sma_60'])
+    # 金叉 diff,dea,z0
+    data['gc_dide'] = GOLDEN_CROSS(data['macd'], data['macd_signal'])
+    data['gc_di0'] = UP_CROSS(data['macd'], 0)
+    data['gc_de0'] = UP_CROSS(data['macd_signal'], 0)
+    # 死叉 close,ma20,ma60
+    data['dc_c2'] = DEAD_CROSS(close, data['sma_20'])
+    data['dc_c6'] = DEAD_CROSS(close, data['sma_60'])
+    data['dc_26'] = DEAD_CROSS(data['sma_20'], data['sma_60'])
+    # 死叉 diff,dea,z0
+    data['dc_dide'] = DEAD_CROSS(data['macd'], data['macd_signal'])
+    data['dc_di0'] = DOWN_CROSS(data['macd'], 0)
+    data['dc_de0'] = DOWN_CROSS(data['macd_signal'], 0)
+    # 差比 close,ma20,ma60
+    data['dp_c2'] = DIFF_PCT(close, data['sma_20'])
+    data['dp_c6'] = DIFF_PCT(close, data['sma_60'])
+    data['dp_26'] = DIFF_PCT(data['sma_20'], data['sma_60'])
+    # 差比 diff,dea,z0
+    data['dp_dide'] = DEAD_CROSS(data['macd'], data['macd_signal'])
+    data['dp_di0'] = DOWN_CROSS(data['macd'], 0)
+    data['dp_de0'] = DOWN_CROSS(data['macd_signal'], 0)
+    # 差比
+    data['dp_cl14'] = DIFF_PCT(close, data['min_14'])
+    data['dp_ch14'] = DIFF_PCT(close, data['max_14'])
+    data['dp_dil14'] = DIFF_PCT(data['macd'], data['macd_min_14'])
+    data['dp_dih14'] = DIFF_PCT(data['macd'], data['macd_max_14'])
+
+    return data
+
+
+# 5,8,13,21,34,55,89,144
 def ochl2buy(open, close, high, low, volume):
     data = pd.DataFrame()
     data['pct'] = PCT_CHANGE(close) * 100
@@ -573,6 +643,7 @@ def ochl2ind(open, close, high, low, volume):
     data['vol_roc'] = ROC(volume)
     data['roc'] = ROC(close, 6)
     data['bias'] = BIAS(close, 24)
+
     # min,max
     data['c_min'] = close - MIN(close, 10)
     return data

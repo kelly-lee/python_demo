@@ -54,14 +54,19 @@ def importance(X, y, columns):
 # y = ind.ROC(close)
 # y = y[30:]
 
-data = ts.get_daily_data(size=300, start_date='20180101', end_date='20190131')
-data = data.iloc[:, 7:]
-print data.info()
-sc = MinMaxScaler(feature_range=(0, 1))
 
-X = data.iloc[:, data.columns != "c_min"].values
+# data = ts.get_daily_data(size=300, start_date='20180101', end_date='20190131')
+data = ts.query_by_sql("select * from a_daily_sat where date>'2019-04-01' ")
+data = data.drop(columns=['pct_sum_next_5', 'id', 'symbol', 'pct_next', 'date'])
+data = data.dropna()
+print data.info()
+# data = data.iloc[:, 7:]
+
+# sc = MinMaxScaler(feature_range=(0, 1))
+
+X = data.iloc[:, data.columns != "pct_sum_next_3"].values
 # X = sc.fit_transform(X) * 100
-y = data.ix[:, "c_min"].astype('int')
+y = np.round(data.ix[:, "pct_sum_next_3"], 0)
 # d = sc.inverse_transform(X)
 # print data[['c_min', 'vol_roc', 'macd_hist', 'slow_k', 'slow_d', 'pdi']]
 
@@ -74,39 +79,6 @@ y = data.ix[:, "c_min"].astype('int')
 # plt.plot(data['mfi'])
 # plt.legend()
 # plt.show()
-
-importance(X, y, data.iloc[:, data.columns != "c_min"].columns)
-
-# Feature ranking:
-# 1. feature vol_roc (0.034625)
-# 2. feature macd_hist (0.034455)
-# 3. feature slow_k (0.033927)
-# 4. feature slow_d (0.033756)
-# 5. feature pdi (0.033144)
-# 6. feature fast_k (0.033110)
-# 7. feature mfi (0.032762)
-# 8. feature aroon_up (0.032445)
-# 9. feature dx (0.032187)
-# 10. feature max (0.032034)
-# 11. feature trix (0.031859)
-# 12. feature atr (0.031802)
-# 13. feature emv (0.031757)
-# 14. feature fast_d (0.031527)
-# 15. feature willr (0.031436)
-# 16. feature macd_signal (0.031313)
-# 17. feature mdi (0.031262)
-# 18. feature middle_band (0.030949)
-# 19. feature rsi (0.030854)
-# 20. feature cci (0.030788)
-# 21. feature mdm (0.030660)
-# 22. feature tr (0.030238)
-# 23. feature macd (0.030132)
-# 24. feature pdm (0.030119)
-# 25. feature upper_band (0.030025)
-# 26. feature aroonosc (0.029978)
-# 27. feature lower_band (0.029535)
-# 28. feature obv (0.029305)
-# 29. feature c_min (0.028687)
-# 30. feature min (0.028619)
-# 31. feature aroon_down (0.028507)
-# 32. feature adxr (0.028205)
+y = np.round(data["pct_sum_next_3"].values,0)
+print 'begin train'
+importance(X, y, data.iloc[:, data.columns != "pct_sum_next_3"].columns)
