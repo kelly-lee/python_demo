@@ -9,15 +9,16 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 import pandas as pd
-import Charts
-from sklearn import cluster, covariance, manifold
-from bs4 import BeautifulSoup
-import urllib2
+import MySQLdb as db
+# from sklearn import cluster, covariance, manifold
+# from bs4 import BeautifulSoup
+# import urllib2
 from bs4 import UnicodeDammit
 import re
 import sys
-import MySQLdb as db
-import Indicators as ind
+import socket.Charts as Charts
+
+import socket.Indicators as ind
 
 
 # 获得美股列表
@@ -143,11 +144,11 @@ def batch_save_usa_daily_data(sector, symbols, start, end):
         i += 1
         try:
             save_usa_daily_data(engine=engine, table=sector, symbol=symbol, start=start, end=end)
-            print i, symbol, 'save'
+            print (i, symbol, 'save')
         except:
-            print i, symbol, 'save error'
+            print (i, symbol, 'save error')
             error_codes.append(symbol)
-    print error_codes
+    print (error_codes)
 
 
 # 查询美股日行情
@@ -164,7 +165,7 @@ def get_usa_daily_data_ind(sector='', symbol='', trade_date='', start_date='', e
     if (len(end_date) > 0) & (not end_date.isspace()):
         sql += "and date <= %(end_date)s "
     sql += "order by symbol asc , date asc "
-    print sql
+    print (sql)
     data = pd.read_sql(sql, params={'symbol': symbol, 'date': trade_date, 'start_date': start_date,
                                     'end_date': end_date}, con=con)
     if append_ind:

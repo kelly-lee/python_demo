@@ -4,12 +4,13 @@ import pandas as pd
 from sqlalchemy import create_engine
 import numpy as np
 import matplotlib.pyplot as plt
-import UsaStore as store
-import Indicators as ind
 import mpl_finance as mpf
 import pandas_datareader.data as web
-import TushareStore
+import stock.TushareStore as TushareStore
+import stock.Indicators as ind
 
+
+# import stock.UsaStore as store
 
 def get_chart_data_from_web(code, start_date='', end_date='', append_ind=True):
     data = web.DataReader(code, data_source='yahoo', start=start_date, end=end_date)
@@ -200,10 +201,11 @@ def drawMACD(ax, data, periods=[12, 26, 9]):
     #                                                  signal_period=periods[2])
     ax.plot(macd, label='macd%d' % periods[0])
     ax.plot(macd_signal, label='macd_singal%d' % periods[1])
-    ax.bar(close.index, macd_histogram.clip_lower(0), facecolor='r')
-    ax.bar(close.index, macd_histogram.clip_upper(0), facecolor='g')
+    ax.bar(close.index, macd_histogram.clip(lower=0), facecolor='r')
+    ax.bar(close.index, macd_histogram.clip(upper=0), facecolor='g')
     drawHline(ax, [0])
-    ax.set_ylabel('MACD')
+    # ax.set_ylabel('MACD')
+    ax.set_yticks([])
 
 
 def drawTRIX(ax, data, periods=[14], hlines=[]):
@@ -342,8 +344,8 @@ def drawBuy(row, col, sector, symbols, start, end):
     i = 0
     for symbol in symbols:
         i += 1
-        data = store.get_usa_daily_data_ind(sector=sector, symbol=symbol, start_date=start,
-                                            end_date=end, append_ind=True)
+        data = TushareStore.get_usa_daily_data_ind(sector=sector, symbol=symbol, start_date=start,
+                                                   end_date=end, append_ind=True)
         # data = store.get_chart_data_from_db("600%d.SH" % code, '20180101')
         # data = get_chart_data_from_web(code, '1/1/2018', '1/30/2019')
         close, pdi, wr, wr_89, bias = data['close'], data['pdi'], data['willr'], data['willr_89'], data['bias']
@@ -430,7 +432,7 @@ def drawBuyA(row, col, symbols, start, end):
     fig = plt.figure(figsize=(16, 16))
     i = 0
     for symbol in symbols:
-        print symbol
+        print(symbol)
         i += 1
         data = TushareStore.get_a_daily_data_ind(table='a_daily', symbol=symbol, start_date=start,
                                                  end_date=end,
@@ -456,5 +458,5 @@ if __name__ == '__main__':
     # df = df.iloc[0:120]
     symbols = TushareStore.get_a_stock_list('a_daily')
     symbols = symbols.iloc[:120, :]
-    print symbols
+    print(symbols)
     drawBuyA(12, 10, symbols['symbol'].tolist(), '2018-10-01', '2019-02-26')

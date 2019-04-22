@@ -1,36 +1,17 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
-import pandas_datareader.data as web
-import matplotlib.pyplot as plt
-import talib
 import numpy as np
 
 
-# class Indicator:
-#     def __init__(self, data):
-#         self.data = data
-#         self.close = data['Close']
-#
-#     def DIFF(self, price=None, time_period=1):
-#         if price is None:
-#             return self.close.diff(time_period)
-#         else:
-#             return self.data[price].diff(time_period)
-#
-#
-# data = web.DataReader('GOOG', data_source='yahoo', start='1/1/2017', end='1/30/2019')
-# data = pd.DataFrame(data)
-#
-# ind = Indicator(data)
-# print DIFF()
+
 def TOUCH(price, line, p=0.01):
     return BETWEEN(price, line * (1 - p), line * (1 + p))
 
-
+#涨、上升
 def UP(price):
     return price >= REF(price)
 
-
+#跌、下降
 def DOWN(price):
     return price < REF(price)
 
@@ -42,37 +23,41 @@ def LESS_THAN(price, line):
 def GREAT_THAN(price, line):
     return price >= line
 
-
+#差比
 def DIFF_PCT(price, base):
     return (price - base) / price * 100.0
 
-
+#值区间
 def BETWEEN(price, low, high):
     return (price >= low) & (price <= high)
 
-
+#上穿
 def UP_CROSS(price, line):
     return (price.shift(1) <= line) & (price >= line)
 
-
+#下穿
 def DOWN_CROSS(price, line):
     return (price.shift(1) >= line) & (price <= line)
 
-
+#金叉
 def GOLDEN_CROSS(fast, slow):
     return (fast.shift(1) <= slow.shift(1)) & (fast >= slow)
 
-
+#死叉
 def DEAD_CROSS(fast, slow):
     return (fast.shift(1) >= slow.shift(1)) & (fast <= slow)
 
-
+#顶
 def TOP(price):
     return (price.shift(2) <= price.shift(1)) & (price.shift(1) >= price)
 
-
+#底
 def BOTTOM(price):
     return (price.shift(2) >= price.shift(1)) & (price.shift(1) <= price)
+
+
+def SEQ(low, middle, high):
+    return (low < middle) & (middle < high)
 
 
 ###############################################################################
@@ -95,6 +80,7 @@ def PCT_CHANGE(price, time_period=1):
 
 def DRCT(price, time_period=1):
     return PCT_CHANGE(price, time_period).apply(lambda p: np.sign(p))
+
 
 
 def MEDIAN(high, low):
