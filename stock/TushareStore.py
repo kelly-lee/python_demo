@@ -330,6 +330,8 @@ def show(row, col, symbols, names, start_date='2019-01-01', end_date='2019-04-30
         charts.drawK(ax, data)
         charts.drawSMA(ax, data, periods=[3, 20, 60])
         charts.drawDate(ax, data)
+        ax.plot(data['min_21'])
+        ax.plot(data['max_21'])
         ax.set_title(names[i], fontproperties=font)
         show_buy(ax, data, 'k')
         show_trend(ax, data)
@@ -350,7 +352,7 @@ def show(row, col, symbols, names, start_date='2019-01-01', end_date='2019-04-30
         # ax = plt.twinx()
 
         i = i + 1
-    plt.subplots_adjust(left=0.02, right=0.99, top=0.97, bottom=0.02, hspace=0.3, wspace=0.2)
+    plt.subplots_adjust(left=0.02, right=0.99, top=0.97, bottom=0.02, hspace=0.2, wspace=0.1)
     plt.show()
 
 
@@ -419,7 +421,7 @@ def show_trend(ax, data):
     condition_down = (ind.DOWN(ma3) | ind.DOWN(ma20)) & (ind.DOWN(diff) | ind.DOWN(dea))
     # 强上涨
     ax.bar(data[condition_up & ind.SEQ(0, dea, diff)].index, 1, facecolor='darkred', width=1, alpha=0.7)
-    ax.bar(data[ind.UP(ind.SMA(close, 2)) & condition_up & ind.SEQ(0, dea, diff)].index, 1, facecolor='darkred', width=1, alpha=0.1)
+    ax.bar(data[ind.UP(close) & condition_up & ind.SEQ(0, dea, diff)].index, 1, facecolor='darkred', width=1, alpha=0.2)
     # 弱上涨
     ax.bar(data[condition_up & ind.SEQ(dea, diff, 0)].index, 1, facecolor='darkred', width=1, alpha=0.2)
     # # 努力上升
@@ -536,10 +538,10 @@ and pct_next<0
      and industry = '化学制药'
     # and name in ('香飘飘','国药一致','涪陵榨菜','紫天科技')
     #  and name in ('恒瑞医药','芯能科技','利通电子','宇信科技','联化科技','群兴玩具','合力泰')
-    limit 10,10
+    limit 20,10
      """
     stocks = query_by_sql(sql)
     print(stocks)
-    show(4, 5, stocks['symbol'].tolist(), stocks['name'].tolist(), start_date='2019-01-01', end_date='2019-05-01')
+    show(4, 5, stocks['symbol'].tolist(), stocks['name'].tolist(), start_date='2018-10-01', end_date='2019-05-01')
     # willr整体分布图
     # draw_willr_bar()
