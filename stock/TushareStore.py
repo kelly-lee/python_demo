@@ -134,6 +134,8 @@ def save_a_daily_data_sat(start_date, end_date):
         open, close, high, low, volume = data['open'], data['close'], data['high'], data['low'], data['volume']
         ochl2ind = ind.ochl2sat(open, close, high, low, volume)
         data = data.join(ochl2ind, how='left')
+        # for index,row in data.iterrows():
+        # print (row)
         data.to_sql('a_daily_sat', engine, if_exists='append', index=False)
         print(symbol, 'loaded')
 
@@ -294,7 +296,7 @@ def test_draw_pct_sum():
 
 # 画 willr整体分布图
 def draw_willr_bar():
-    data = query_by_sql(sql="select date,willr from a_daily_ind order by date asc")
+    data = query_by_sql(sql="select date,willr from a_daily_sat order by date asc")
     row = 5
     col = 4
     fig = plt.figure(figsize=(8, 8))
@@ -330,8 +332,8 @@ def show(row, col, symbols, names, start_date='2019-01-01', end_date='2019-04-30
         charts.drawK(ax, data)
         charts.drawSMA(ax, data, periods=[3, 20, 60])
         charts.drawDate(ax, data)
-        ax.plot(data['min_21'])
-        ax.plot(data['max_21'])
+        # ax.plot(data['min_21'])
+        # ax.plot(data['max_21'])
         ax.set_title(names[i], fontproperties=font)
         show_buy(ax, data, 'k')
         show_trend(ax, data)
@@ -341,10 +343,10 @@ def show(row, col, symbols, names, start_date='2019-01-01', end_date='2019-04-30
         charts.drawMACD(ax, data)
         # charts.drawDate(ax, data)
 
-        ax.plot(data['macd'], label='diff')
-        ax.plot(data['macd_signal'], label='dea')
+        ax.plot(data['dif'], label='diff')
+        ax.plot(data['dea'], label='dea')
         ax.axhline(y=0, color='grey', linestyle="--", linewidth=1)
-        show_buy(ax, data, 'macd')
+        show_buy(ax, data, 'dif')
         show_trend(ax, data)
         ax.set_xticks([])
         ax.set_yticks([])
@@ -359,7 +361,7 @@ def show(row, col, symbols, names, start_date='2019-01-01', end_date='2019-04-30
 def show_buy(ax, data, type):
     close, low, high = data['close'], data['low'], data['high']
     ma3, ma5, ma20, ma60 = data['sma_3'], data['sma_5'], data['sma_20'], data['sma_60']
-    diff, dea = data['macd'], data['macd_signal']
+    diff, dea = data['dif'], data['dea']
     close, willr, willr_34, willr_89, = data['close'], data['willr'], data['willr_34'], data['willr_89']
     bias, pdi = data['bias'], data['pdi']
     buy = ind.LESS_THAN(willr, -88)
@@ -413,22 +415,24 @@ def show_buy(ax, data, type):
 def show_trend(ax, data):
     close, low, high = data['close'], data['low'], data['high']
     ma3, ma5, ma20, ma60 = data['sma_3'], data['sma_5'], data['sma_20'], data['sma_60']
-    diff, dea, hist = data['macd'], data['macd_signal'], data['macd_hist']
+    diff, dea, hist = data['dif'], data['dea'], data['hist']
 
     ax = plt.twinx()
     ax.set_yticks([])
     condition_up = (ind.UP(ma3) | ind.UP(ma20)) & (ind.UP(diff) | ind.UP(dea))
+    condition_up = ind.UP(dea)
     condition_down = (ind.DOWN(ma3) | ind.DOWN(ma20)) & (ind.DOWN(diff) | ind.DOWN(dea))
+    condition_down = ind.DOWN(dea)
     # 强上涨
     ax.bar(data[condition_up & ind.SEQ(0, dea, diff)].index, 1, facecolor='darkred', width=1, alpha=0.7)
-    ax.bar(data[ind.UP(close) & condition_up & ind.SEQ(0, dea, diff)].index, 1, facecolor='darkred', width=1, alpha=0.2)
+    # ax.bar(data[ind.UP(close) & condition_up & ind.SEQ(0, dea, diff)].index, 1, facecolor='darkred', width=1, alpha=0.2)
     # 弱上涨
     ax.bar(data[condition_up & ind.SEQ(dea, diff, 0)].index, 1, facecolor='darkred', width=1, alpha=0.2)
     # # 努力上升
     ax.bar(data[condition_up & ind.SEQ(dea, 0, diff)].index, 1, facecolor='darkred', width=1, alpha=0.5)
 
     # 强下跌
-    ax.bar(data[condition_down & ind.SEQ(diff, dea, 0)].index, 1, facecolor='darkgreen', width=1, alpha=0.6)
+    ax.bar(data[condition_down & ind.SEQ(diff, dea, 0)].index, 1, facecolor='darkgreen', width=1, alpha=0.8)
     # 弱下跌
     ax.bar(data[condition_down & ind.SEQ(0, diff, dea)].index, 1, facecolor='darkgreen', width=1, alpha=0.2)
     # # 努力下跌
@@ -501,47 +505,52 @@ def show_up_down():
     # data = data.dropna()
 
 
+# 根据sql显示K线图面板
+def test_draw_k():
+    sql = """
+    select symbol,name,pct_next,industry,pct,pct_sum_3,pct_sum_5 ,macd,macd_signal,(macd-macd_signal)/macd
+    from a_daily_sat 
+    inner join stock_basic  on a_daily_sat.symbol = stock_basic.ts_code
+    where 1=1
+    and date > '2019-01-01'
+    and gc_di0 = 1
+    and gc_c6 = 1
+    and pct_next<0
+        order by date asc
+        limit 0,8
+            """
+    sql = """
+         select distinct(symbol),name
+         from a_daily_sat
+         inner join stock_basic  on a_daily_sat.symbol = stock_basic.ts_code
+         where 1=1
+         and industry = '化学制药'
+        # and name in ('香飘飘','国药一致','涪陵榨菜','紫天科技')
+        #  and name in ('恒瑞医药','芯能科技','利通电子','宇信科技','联化科技','群兴玩具','合力泰')
+        limit 0,10
+         """
+    stocks = query_by_sql(sql)
+    print(stocks)
+    show(4, 5, stocks['symbol'].tolist(), stocks['name'].tolist(), start_date='2019-01-01', end_date='2019-05-01')
+
+
 if __name__ == '__main__':
     # show_up_down()
     # 保存股票基本信息
     # save_stock_basic()
     # 保存每天行情
-    # save_a_daily_all(trade_date='20190418')
+    # save_a_daily_all(trade_date='20190425')
     # 保存所有买卖技术指标
-    # save_a_daily_data_ind(start_date='2018-01-01', end_date='2019-04-18')
+    # save_a_daily_data_ind(start_date='2018-01-01', end_date='2019-04-24')
     # 保存所有买卖技术指标
-    # save_a_daily_data_sat(start_date='2018-01-01', end_date='2019-04-18')
+    # save_a_daily_data_sat(start_date='2018-01-01', end_date='2019-04-25')
     # 统计大涨大跌次数和窗口期内累积最大涨幅和最大跌幅
     # save_industry_sat()
 
     # 画某时段涨幅图
     # test_draw_pct_sum()
     # print query_basic_stock()
-    # 根据sql显示K线图面板
-    sql = """
-select symbol,name,pct_next,industry,pct,pct_sum_3,pct_sum_5 ,macd,macd_signal,(macd-macd_signal)/macd
-from a_daily_sat 
-inner join stock_basic  on a_daily_sat.symbol = stock_basic.ts_code
-where 1=1
-and date > '2019-01-01'
-and gc_di0 = 1
-and gc_c6 = 1
-and pct_next<0
-    order by date asc
-    limit 0,8
-        """
-    sql = """
-     select distinct(symbol),name
-     from a_daily_sat
-     inner join stock_basic  on a_daily_sat.symbol = stock_basic.ts_code
-     where 1=1
-     and industry = '化学制药'
-    # and name in ('香飘飘','国药一致','涪陵榨菜','紫天科技')
-    #  and name in ('恒瑞医药','芯能科技','利通电子','宇信科技','联化科技','群兴玩具','合力泰')
-    limit 20,10
-     """
-    stocks = query_by_sql(sql)
-    print(stocks)
-    show(4, 5, stocks['symbol'].tolist(), stocks['name'].tolist(), start_date='2018-10-01', end_date='2019-05-01')
+
+    test_draw_k()
     # willr整体分布图
     # draw_willr_bar()

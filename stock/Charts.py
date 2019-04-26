@@ -192,10 +192,10 @@ def drawRSI(ax, data, periods=[6, 12, 24], hlines=[20, 50, 80]):
 
 def drawMACD(ax, data, periods=[12, 26, 9]):
     close = data['close']
-    if data.__contains__('macd') & data.__contains__('macd_signal') & data.__contains__('macd_hist'):
-        macd = data['macd']
-        macd_signal = data['macd_signal']
-        macd_histogram = data['macd_hist']
+    if data.__contains__('dif') & data.__contains__('dea') & data.__contains__('hist'):
+        macd = data['dif']
+        macd_signal = data['dea']
+        macd_histogram = data['hist']
     # else:
     #     macd, macd_signal, macd_histogram = ind.MACD(close, fast_period=periods[0], slow_period=periods[1],
     #                                                  signal_period=periods[2])
