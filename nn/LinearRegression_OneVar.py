@@ -10,11 +10,12 @@ from nn.Functions import *
 class Linear_Regression:
 
     def __init__(self):
-        self.theta = None
+        self.theta_1 = 0
+        self.theta_0 = 0
 
     # 学习算法的解决方案或函数也称为假设
     def hypothesis(self, X):
-        return self.theta.T * X
+        return self.theta_0 + self.theta_1 * X
 
     # 代价函数
     def cost_function(self, yhat, y):
@@ -23,16 +24,21 @@ class Linear_Regression:
         # 目标便是选择出可以使得建模误差的平方和能够最小的模型参数
         return np.sum(np.square(error)) / (2 * m)
 
-    def theta_derivative(self, yhat, y, x):
+    def theta_1_derivative(self, yhat, y, x):
         m = len(y)
         return np.sum((yhat - y) * x) / m
+
+    def theta_0_derivative(self, yhat, y):
+        m = len(y)
+        return np.sum((yhat - y)) / m
 
     # 批量梯度下降
     def batch_gradient_decent(self, X, y, epochs=1000, learning_rate=0.01):
         losses = []
         for epoch in range(epochs):
             yhat = self.hypothesis(X)
-            self.theta += -learning_rate * self.theta_1_derivative(yhat, y, X)
+            self.theta_1 += -learning_rate * self.theta_1_derivative(yhat, y, X)
+            self.theta_0 += -learning_rate * self.theta_0_derivative(yhat, y)
 
             if epoch % 100 == 0:
                 loss = self.cost_function(yhat, y)
