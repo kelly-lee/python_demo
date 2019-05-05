@@ -3,15 +3,16 @@ import pandas as pd
 import numpy as np
 
 
-
 def TOUCH(price, line, p=0.01):
     return BETWEEN(price, line * (1 - p), line * (1 + p))
 
-#涨、上升
+
+# 涨、上升
 def UP(price):
     return price >= REF(price)
 
-#跌、下降
+
+# 跌、下降
 def DOWN(price):
     return price < REF(price)
 
@@ -23,35 +24,43 @@ def LESS_THAN(price, line):
 def GREAT_THAN(price, line):
     return price >= line
 
-#差比
+
+# 差比
 def DIFF_PCT(price, base):
     return (price - base) / price * 100.0
 
-#值区间
+
+# 值区间
 def BETWEEN(price, low, high):
     return (price >= low) & (price <= high)
 
-#上穿
+
+# 上穿
 def UP_CROSS(price, line):
     return (price.shift(1) <= line) & (price >= line)
 
-#下穿
+
+# 下穿
 def DOWN_CROSS(price, line):
     return (price.shift(1) >= line) & (price <= line)
 
-#金叉
+
+# 金叉
 def GOLDEN_CROSS(fast, slow):
     return (fast.shift(1) <= slow.shift(1)) & (fast >= slow)
 
-#死叉
+
+# 死叉
 def DEAD_CROSS(fast, slow):
     return (fast.shift(1) >= slow.shift(1)) & (fast <= slow)
 
-#顶
+
+# 顶
 def TOP(price):
     return (price.shift(2) <= price.shift(1)) & (price.shift(1) >= price)
 
-#底
+
+# 底
 def BOTTOM(price):
     return (price.shift(2) >= price.shift(1)) & (price.shift(1) <= price)
 
@@ -80,7 +89,6 @@ def PCT_CHANGE(price, time_period=1):
 
 def DRCT(price, time_period=1):
     return PCT_CHANGE(price, time_period).apply(lambda p: np.sign(p))
-
 
 
 def MEDIAN(high, low):
@@ -184,10 +192,10 @@ def BBANDS(price, time_period=5, nb_dev_up=2, nb_dev_dn=2):
 # Signal Line: 9-day EMA of MACD
 # MACD Histogram: MACD - Signal Line
 def MACD(price, fast_period=12, slow_period=26, signal_period=9):
-    macd = EMA(price, fast_period) - EMA(price, slow_period)
-    macd_signal = EMA(macd, signal_period)
-    macd_histogram = macd - macd_signal
-    return macd, macd_signal, macd_histogram
+    dif = EMA(price, fast_period) - EMA(price, slow_period)
+    dea = EMA(dif, signal_period)
+    hist = dif - dea
+    return dif, dea, hist
 
 
 # %R = (Highest High - Close)/(Highest High - Lowest Low) * -100
@@ -465,8 +473,8 @@ def ochl2sat(open, close, high, low, volume):
     data['pct_next'] = REF(PCT_CHANGE(close), -1) * 100
 
     data['vr'] = volume / REF(SMA(volume, 5), 1)
-    data['vr_ref'] = REF(data['vr'])
-    data['dp_vr'] = DIFF_PCT(data['vr_ref'], data['vr'])
+    # data['vr_ref'] = REF(data['vr'])
+    # data['dp_vr'] = DIFF_PCT(data['vr_ref'], data['vr'])
 
     for period in [3, 5]:
         data['pct_sum_%d' % period] = SUM(data['pct'], period)
@@ -484,41 +492,50 @@ def ochl2sat(open, close, high, low, volume):
 
     for period in [3, 5, 20, 60]:
         data['sma_%d' % period] = SMA(close, period)
-    macd, macdsignal, macdhist = MACD(close, 12, 26, 9)
-    data['macd'] = macd
-    data['macd_signal'] = macdsignal
-    data['macd_hist'] = macdhist
-    data['macd_min_14'] = MIN(macd, 14)
-    data['macd_max_14'] = MAX(macd, 14)
+    data['sma_20_pct'] = PCT_CHANGE(data['sma_20']) * 100
+    data['sma_60_pct'] = PCT_CHANGE(data['sma_60']) * 100
+
+    dif, dea, hist = MACD(close, 12, 26, 9)
+    data['dif'] = dif
+    data['dea'] = dea
+    data['hist'] = hist
+    data['dif_min_14'] = MIN(dif, 14)
+    data['dif_max_14'] = MAX(dif, 14)
+    data['dif_pct'] = PCT_CHANGE(dif) * 100
+    data[data['dif_pct'] == float('inf')] = None
+    data['dea_pct'] = PCT_CHANGE(dea) * 100
+    data[data['dea_pct'] == float('inf')] = None
+    data['hist_pct'] = PCT_CHANGE(hist) * 100
+    data[data['hist_pct'] == float('inf')] = None
     # 金叉 close,ma20,ma60
     data['gc_c2'] = GOLDEN_CROSS(close, data['sma_20'])
     data['gc_c6'] = GOLDEN_CROSS(close, data['sma_60'])
     data['gc_26'] = GOLDEN_CROSS(data['sma_20'], data['sma_60'])
     # 金叉 diff,dea,z0
-    data['gc_dide'] = GOLDEN_CROSS(data['macd'], data['macd_signal'])
-    data['gc_di0'] = UP_CROSS(data['macd'], 0)
-    data['gc_de0'] = UP_CROSS(data['macd_signal'], 0)
+    data['gc_dide'] = GOLDEN_CROSS(data['dif'], data['dea'])
+    data['gc_di0'] = UP_CROSS(data['dif'], 0)
+    data['gc_de0'] = UP_CROSS(data['dea'], 0)
     # 死叉 close,ma20,ma60
     data['dc_c2'] = DEAD_CROSS(close, data['sma_20'])
     data['dc_c6'] = DEAD_CROSS(close, data['sma_60'])
     data['dc_26'] = DEAD_CROSS(data['sma_20'], data['sma_60'])
     # 死叉 diff,dea,z0
-    data['dc_dide'] = DEAD_CROSS(data['macd'], data['macd_signal'])
-    data['dc_di0'] = DOWN_CROSS(data['macd'], 0)
-    data['dc_de0'] = DOWN_CROSS(data['macd_signal'], 0)
+    data['dc_dide'] = DEAD_CROSS(data['dif'], data['dea'])
+    data['dc_di0'] = DOWN_CROSS(data['dif'], 0)
+    data['dc_de0'] = DOWN_CROSS(data['dea'], 0)
     # 差比 close,ma20,ma60
     data['dp_c2'] = DIFF_PCT(close, data['sma_20'])
     data['dp_c6'] = DIFF_PCT(close, data['sma_60'])
     data['dp_26'] = DIFF_PCT(data['sma_20'], data['sma_60'])
     # 差比 diff,dea,z0
-    data['dp_dide'] = DEAD_CROSS(data['macd'], data['macd_signal'])
-    data['dp_di0'] = DOWN_CROSS(data['macd'], 0)
-    data['dp_de0'] = DOWN_CROSS(data['macd_signal'], 0)
+    data['dp_dide'] = DEAD_CROSS(data['dif'], data['dea'])
+    data['dp_di0'] = DOWN_CROSS(data['dif'], 0)
+    data['dp_de0'] = DOWN_CROSS(data['dea'], 0)
     # 差比
     data['dp_cl14'] = DIFF_PCT(close, data['min_14'])
     data['dp_ch14'] = DIFF_PCT(close, data['max_14'])
-    data['dp_dil14'] = DIFF_PCT(data['macd'], data['macd_min_14'])
-    data['dp_dih14'] = DIFF_PCT(data['macd'], data['macd_max_14'])
+    data['dp_dil14'] = DIFF_PCT(data['dif'], data['dif_min_14'])
+    data['dp_dih14'] = DIFF_PCT(data['dif'], data['dif_max_14'])
 
     return data
 
