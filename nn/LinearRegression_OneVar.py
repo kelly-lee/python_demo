@@ -10,8 +10,8 @@ from nn.Functions import *
 class Linear_Regression:
 
     def __init__(self):
-        self.theta_1 = 0
         self.theta_0 = 0
+        self.theta_1 = 0
 
     # 学习算法的解决方案或函数也称为假设
     def hypothesis(self, X):
@@ -43,7 +43,7 @@ class Linear_Regression:
             if epoch % 100 == 0:
                 loss = self.cost_function(yhat, y)
                 losses.append(loss)
-                print loss
+                print (loss)
         return losses
 
     def predict(self, X):
@@ -53,7 +53,7 @@ class Linear_Regression:
 if __name__ == '__main__':
     X, y = sklearn.datasets.make_regression(100, 1, 1, noise=10, random_state=0)
     X = X.ravel()
-    print X.shape, y.shape
+    print (X.shape, y.shape)
     epochs = 1000
     learning_rate = 0.01
     lr = Linear_Regression()
