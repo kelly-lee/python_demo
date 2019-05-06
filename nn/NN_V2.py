@@ -19,15 +19,15 @@ class NN():
         self.bs = {}  # biases for every layers
 
         self.activations = {}
-        self.activation_datas = {} #是否不需要存储
+        self.activation_datas = {}  # 是否不需要存储
         self.optimizer = None
         self.loss = None
 
-        self.deltas = {} #是否不需要存储
+        self.deltas = {}  # 是否不需要存储
         self.dws = {}  # derivative weights for every layers 是否不需要存储
         self.dbs = {}  # derivative biases for every layers 是否不需要存储
 
-    def add(self, units, activation, input_dim=None):
+    def add(self, units, activation=None, input_dim=None):
         if input_dim is not None:
             self.input_dim = input_dim
             self.units[0] = input_dim
@@ -61,7 +61,9 @@ class NN():
 
     def do_activation(self, layer, z):
         activation = self.activations[layer]
-        if activation == 'sigmoid':
+        if activation is None:
+            a = z
+        elif activation == 'sigmoid':
             a = sigmoid(z)
         elif activation == 'tanh':
             a = tanh(z)
@@ -85,7 +87,9 @@ class NN():
 
     def do_actication_derivative(self, layer, a):
         activation = self.activations[layer]
-        if activation == 'sigmoid':
+        if activation is None:
+            derivative = a
+        elif activation == 'sigmoid':
             derivative = sigmoid_derivative(a)
         elif activation == 'tanh':
             derivative = tanh_derivative(a)
@@ -157,7 +161,7 @@ def test1():
     output_dim = np.unique(y).size  # 输出层节点数 2
 
     nn = NN()
-    nn.add(3, input_dim=input_dim, activation='tanh')
+    nn.add(3, input_dim=input_dim, activation=None)
     # nn.add(5, input_dim=input_dim, activation='tanh')
     # nn.add(3, input_dim=input_dim, activation='tanh')
     nn.add(output_dim, activation='softmax')
@@ -203,7 +207,8 @@ def test2():
     # plt.plot(losses)
     # plt.show()
 
-#梯队下降、随机梯度下降、
+
+# 梯队下降、随机梯度下降、
 # relu 有问题
 # annealing schedule for the gradient descent learning rate
 # minibatch gradient descent

@@ -60,6 +60,7 @@ def elu_derivative(x, a):
 def softmax(x):
     x_e = exp(x)
     x_e_s = np.sum(x_e, axis=1, keepdims=True)
+    print x_e_s
     return x_e / x_e_s
 
 
@@ -78,8 +79,8 @@ def softmax_onehot_loss(y, yhat):
 
 
 def onehot(y):
-    b = np.zeros((y.size, np.unique(y).size))
-    b[np.arange(y.size), y] = 1
+    b = np.zeros((len(y), np.unique(y).size))
+    b[np.arange(len(y)), y] = 1
     return b
 
 
@@ -120,5 +121,3 @@ def draw_all_activation_function(x):
 
 def L1(y, yhat):
     return np.sum(np.abs(y, yhat))
-
-

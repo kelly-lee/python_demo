@@ -14,6 +14,7 @@ class Linear_Regression:
 
     # 学习算法的解决方案或函数也称为假设
     def hypothesis(self, X):
+        # 原数据增加x0列，值为1
         x0 = np.zeros((len(X), 1))
         X = np.hstack((x0, X))
         y = np.dot(X, self.theta.T)
@@ -27,18 +28,18 @@ class Linear_Regression:
 
     def theta_derivative(self, yhat, y, x):
         m = len(y)
+        # 相乘再求和 就是 点乘
+        # return np.dot(x, yhat - y) / m
         return np.sum((yhat - y) * x) / m
 
     # 批量梯度下降
     def batch_gradient_decent(self, X, y, epochs=1000, learning_rate=0.01):
-        # 原数据增加x0列，值为1
-        x0 = np.ones((len(X), 1))
-        X = np.hstack((x0, X))
         # theta初始化为0
         self.theta = np.zeros((1, X.shape[1] + 1))
         losses = []
         for epoch in range(epochs):
             yhat = self.hypothesis(X)
+            # z这里的X是原数据x，而不是增加x0列的X
             self.theta += -learning_rate * self.theta_derivative(yhat, y, X)
 
             if epoch % 10 == 0:
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     # print(b * a)
     X, y = sklearn.datasets.make_regression(100, 1, 1, noise=20, random_state=0)
     y = y.reshape(-1, 1)
-    epochs = 500
+    epochs = 1000
     learning_rate = 0.01
     lr = Linear_Regression()
     losses = lr.batch_gradient_decent(X, y, epochs, learning_rate)
