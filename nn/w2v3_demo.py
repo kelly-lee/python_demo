@@ -84,7 +84,6 @@ class word2vec():
         u = np.dot(self.w2.T, h)
         # print (self.w2.shape, self.w2.T.shape, h.shape, u.shape)
         y_c = self.softmax(u)
-
         return y_c, h, u
 
     # BACKPROPAGATION
@@ -100,6 +99,7 @@ class word2vec():
     # TRAIN W2V model
     def train(self, training_data):
         # INITIALIZE WEIGHT MATRICES
+
         self.w1 = np.random.uniform(-0.8, 0.8, (self.v_count, self.n))  # embedding matrix
         self.w2 = np.random.uniform(-0.8, 0.8, (self.n, self.v_count))  # context matrix
 
@@ -181,15 +181,16 @@ class word2vec():
 # --- EXAMPLE RUN --------------------------------------------------------------+
 
 settings = {}
-settings['n'] = 5  # dimension of word embeddings
+settings['n'] = 10  # dimension of word embeddings
 settings['window_size'] = 2  # context window +/- center word
 settings['min_count'] = 0  # minimum word count
-settings['epochs'] = 5000  # number of training epochs
+settings['epochs'] = 50  # number of training epochs
 settings['neg_samp'] = 10  # number of negative words to use during training
 settings['learning_rate'] = 0.01  # learning rate
 np.random.seed(0)  # set the seed for reproducibility
 
 corpus = [['the', 'quick', 'brown', 'fox', 'jumped', 'over', 'the', 'lazy', 'dog']]
+corpus = [['natural', 'language', 'processing', 'and', 'machine', 'learning', 'is', 'fun', 'and', 'exciting']]
 
 # INITIALIZE W2V MODEL
 w2v = word2vec()
@@ -201,6 +202,6 @@ y = training_data[:, 1]
 # train word2vec model
 w2v.train(training_data)
 
-vec = w2v.word_vec('lazy')
+vec = w2v.word_vec('machine')
 print(vec)
-print(w2v.word_sim('lazy', 5))
+# print(w2v.word_sim('lazy', 5))

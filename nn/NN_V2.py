@@ -77,7 +77,8 @@ class NN():
     def forward_propagation(self, x):
         # 预测也调用这个方法，需要重新初始化X
         self.activation_datas[0] = x
-        for layer in range(1, self.layers + 1):
+        for layer \
+                in range(1, self.layers + 1):
             a_pre, w, b = self.activation_datas[layer - 1], self.ws[layer], self.bs[layer]
             # 计算第i层输入
             z = np.dot(a_pre, w) + b
@@ -88,7 +89,7 @@ class NN():
     def do_actication_derivative(self, layer, a):
         activation = self.activations[layer]
         if activation is None:
-            derivative = a
+            derivative = 1
         elif activation == 'sigmoid':
             derivative = sigmoid_derivative(a)
         elif activation == 'tanh':
@@ -158,7 +159,7 @@ class NN():
         return self.ws, self.bs
 
 
-def aa():
+def test1():
     X, y = sklearn.datasets.make_moons(200, noise=0.20, random_state=1)
     input_dim = X.shape[1]  # 输入层节点数  2
     hidden_dim = 5  # 隐藏层节点数
@@ -170,7 +171,7 @@ def aa():
     # nn.add(3, input_dim=input_dim, activation='tanh')
     nn.add(output_dim, activation='softmax')
     nn.compile()
-    nn.train(X, y, 20000)
+    nn.train(X, y, 1000)
 
     x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
     y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
@@ -217,7 +218,7 @@ def test2():
 # annealing schedule for the gradient descent learning rate
 # minibatch gradient descent
 if __name__ == '__main__':
-    aa()
+    test1()
     # X, y = sklearn.datasets.make_moons(200, noise=0.20, random_state=1)
     # print y
     # b = np.zeros((y.size, np.unique(y).size))
