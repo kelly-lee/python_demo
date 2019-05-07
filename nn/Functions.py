@@ -58,17 +58,16 @@ def elu_derivative(x, a):
 
 
 def softmax(x):
-    x_e = exp(x)
+    x_e = exp(x - np.max(x))
     x_e_s = np.sum(x_e, axis=1, keepdims=True)
-    print x_e_s
-    return x_e / x_e_s
+    return x_e / x_e_s + 0.001
 
 
 # y是一维分类，yhat是分类onehot
 def softmax_loss(y, yhat):
     n = len(y)
-    corect_logprobs = -np.log(yhat[range(n), y])
-    return np.sum(corect_logprobs)
+    corect_logprobs = -np.log(yhat[range(n), y] + 0.001)
+    return np.sum(corect_logprobs + 0.001)
 
 
 # y是onehot，yhat是onehot

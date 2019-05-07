@@ -129,10 +129,14 @@ class NN():
             data_loss = softmax_loss(y, yhat)
         else:
             data_loss = softmax_onehot_loss(y, yhat)
-        s = 0
-        for layer in range(1, self.layers + 1):
-            s += np.sum(np.square(self.ws[layer]))
-        data_loss += 0.01 / 2 * s
+
+        #正则化
+        # s = 0
+        # for layer in range(1, self.layers + 1):
+        #     s += np.sum(np.square(self.ws[layer]))
+        # data_loss += 0.01 / 2 * s
+
+
         data_loss = 1. / len(y) * data_loss
         return data_loss
 
@@ -143,18 +147,18 @@ class NN():
             # 反向传播 **********************
             self.backward_propagation(y)
             # 正则化
-            for layer in range(1, self.layers + 1):
-                self.dws[layer] += reg_lambda * self.ws[layer]
+            # for layer in range(1, self.layers + 1):
+            #     self.dws[layer] += reg_lambda * self.ws[layer]
             # 更新参数
             self.update_params(learning_rate)
             # 输出损失
             if epoch % 100 == 0:
-                print epoch, self.cal_loss(y, yhat)
+                print (epoch, self.cal_loss(y, yhat))
 
         return self.ws, self.bs
 
 
-def test1():
+def aa():
     X, y = sklearn.datasets.make_moons(200, noise=0.20, random_state=1)
     input_dim = X.shape[1]  # 输入层节点数  2
     hidden_dim = 5  # 隐藏层节点数
@@ -184,7 +188,7 @@ def test1():
 def test2():
     # ------------------------------------------------------------
     df = pd.read_csv('W1data.csv')
-    print df.head()
+    print (df.head())
 
     # ------------------------------------------------------------
     # Get the wine labels
@@ -192,8 +196,8 @@ def test2():
     # print y.head()
     # Get inputs; we define our x and y here.
     X = df.drop(['Cultivar 1', 'Cultivar 2', 'Cultivar 3'], axis=1)
-    print X.shape  # (178, 13)
-    print y.shape  # Print shapes just to check (178, 3)
+    print (X.shape ) # (178, 13)
+    print (y.shape)  # Print shapes just to check (178, 3)
     X = X.values
     # ------------------------------------------------------------
     np.random.seed(0)
@@ -213,7 +217,7 @@ def test2():
 # annealing schedule for the gradient descent learning rate
 # minibatch gradient descent
 if __name__ == '__main__':
-    test1()
+    aa()
     # X, y = sklearn.datasets.make_moons(200, noise=0.20, random_state=1)
     # print y
     # b = np.zeros((y.size, np.unique(y).size))

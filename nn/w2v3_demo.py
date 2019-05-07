@@ -80,9 +80,9 @@ class word2vec():
     # FORWARD PASS
     def forward_pass(self, x):
         h = np.dot(self.w1.T, x)
-        print self.w1.shape, self.w1.T.shape, len(x), h.shape
+        # print (self.w1.shape, self.w1.T.shape, len(x), h.shape)
         u = np.dot(self.w2.T, h)
-        print self.w2.shape, self.w2.T.shape, h.shape, u.shape
+        # print (self.w2.shape, self.w2.T.shape, h.shape, u.shape)
         y_c = self.softmax(u)
 
         return y_c, h, u
@@ -123,7 +123,7 @@ class word2vec():
                 self.loss += -np.sum([u[word.index(1)] for word in w_c]) + len(w_c) * np.log(np.sum(np.exp(u)))
                 # self.loss += -2*np.log(len(w_c)) -np.sum([u[word.index(1)] for word in w_c]) + (len(w_c) * np.log(np.sum(np.exp(u))))
 
-            print 'EPOCH:', i, 'LOSS:', self.loss
+            print('EPOCH:', i, 'LOSS:', self.loss)
         pass
 
     # input a word, returns a vector (if available)
@@ -146,10 +146,10 @@ class word2vec():
             word = self.index_word[i]
             word_sim[word] = theta
 
-        words_sorted = sorted(word_sim.items(), key=lambda (word, sim): sim, reverse=True)
+        words_sorted = sorted(word_sim.items(), key=lambda word_sim: word_sim[1], reverse=True)
 
         for word, sim in words_sorted[:top_n]:
-            print word, sim
+            print(word, sim)
 
         pass
 
@@ -170,10 +170,10 @@ class word2vec():
             word = self.index_word[i]
             word_sim[word] = theta
 
-        words_sorted = sorted(word_sim.items(), key=lambda (word, sim): sim, reverse=True)
+        words_sorted = sorted(word_sim.items(), key=lambda word_sim: word_sim[1], reverse=True)
 
         for word, sim in words_sorted[:top_n]:
-            print word, sim
+            print(word, sim)
 
         pass
 
@@ -200,3 +200,7 @@ x = training_data[:, 0]
 y = training_data[:, 1]
 # train word2vec model
 w2v.train(training_data)
+
+vec = w2v.word_vec('lazy')
+print(vec)
+print(w2v.word_sim('lazy', 5))

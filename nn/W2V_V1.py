@@ -3,9 +3,11 @@
 # coding: utf-8
 import sys
 import numpy as np
-from NN_V2 import NN
-from Functions import *
+from nn.NN_V2 import NN
+from nn.Functions import *
 #https://ai.yanxishe.com/page/TextTranslation/1317
+# https://towardsdatascience.com/word2vec-from-scratch-with-numpy-8786ddd49e72
+# https://www.geeksforgeeks.org/implement-your-own-word2vecskip-gram-model-in-python/
 #单词到向量的转换也被称为单词嵌入（word embedding）
 #每个唯一的单词在空间中被分配一个向量
 #Continuous Bag-of-Words(CBOW) 从相邻单词（上下文单词）猜测输出（目标单词) 比skip-gram训练快几倍，对出现频率高的单词的准确度稍微更好一些
@@ -26,7 +28,7 @@ def test2():
     word2id = {}
     data = list(sentences)
     for index, word in enumerate(set(sentences)):
-        print type(word)
+        print (type(word))
         id = index
         id2word[id] = word
         word2id[word] = id
