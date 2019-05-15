@@ -15,6 +15,7 @@ from six import iteritems
 import gensim.downloader as api
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+import pandas as pd
 from matplotlib.font_manager import FontProperties
 
 reload(sys)
@@ -52,11 +53,14 @@ class W2V():
         # 这里加入字典，字典的id2token就会被初始化
         self.lsi = models.LsiModel(self.tfidf[self.corpus], id2word=self.dictionary, num_topics=300)
         self.similarity = similarities.MatrixSimilarity(self.lsi[self.corpus])
-        self.word2vec = Word2Vec(words, min_count=1, window=5, size=200, iter=50)
+        self.word2vec = Word2Vec(words, min_count=1, window=5, size=200, iter=50, )
         words = [word for doc in self.words for word in doc]
         global_corpus = self.get_corpus(words)
         self.init_global_bows(global_corpus)
         self.init_global_tfidfs(global_corpus)
+
+    def get_word2vec(self):
+        return self.word2vec
 
     def init_global_bows(self, global_corpus):
         self.global_bows = {}
@@ -121,40 +125,40 @@ class W2V():
             tfidfs = tfidfs[:topn]
         return tfidfs
 
+    def get_2d_vectors(self, topn):
+        df = pd.DataFrame()
+        gloabl_tfidf = self.get_global_tfidf(topn=topn)
+        vectors = []
+        for token, tfidf in gloabl_tfidf:
+            vector = self.get_vector(token)
+            vectors.append(vector)
+            df = df.append(pd.DataFrame([[vector]], index=[token], columns=['vector']))
+        pca = PCA(n_components=2, random_state=0)
+        vectors_2d = pca.fit_transform(vectors)
+        df['vector_x'] = vectors_2d[:, 0]
+        df['vector_y'] = vectors_2d[:, 1]
+        return df
+
+    def draw_vector(self, topn):
+        data = self.get_2d_vectors(topn)
+        font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=8)
+        for index, row in data.iterrows():
+            plt.text(row['vector_x'], row['vector_y'], index, fontproperties=font)
+        desc = data.describe()
+        x_min = desc.at['min', 'vector_x'] * 0.8
+        x_max = desc.at['max', 'vector_x'] * 1.2
+        y_min = desc.at['min', 'vector_y'] * 0.8
+        y_max = desc.at['max', 'vector_y'] * 1.2
+        plt.ylim(y_min, y_max)
+        plt.xlim(x_min, x_max)
+        plt.show()
+
     def get_similarities(self, words):
         corpus = self.get_corpus(words)
         lsi = self.lsi[corpus]
         sims = self.similarity[lsi]
         sims = sorted(enumerate(sims), key=lambda item: -item[1])
         return sims
-
-    def draw_vector(self, topn):
-        gloabl_tfidf = self.get_global_tfidf(topn=topn)
-        vectors = {}
-        for token, tfidf in gloabl_tfidf:
-            vectors[token] = self.get_vector(token)
-            # print tfidf[0], tfidf[1]
-
-        pca = PCA(n_components=2)
-        vectors_2d = pca.fit_transform(vectors.values())
-        data = []
-        for index, key in enumerate(vectors.keys()):
-            x, y = vectors_2d[index][0].astype(float), vectors_2d[index][1].astype(float)
-            data[index] = [key, x, y]
-        # data = np.array(data)
-        font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=8)
-        for new_vector in data:
-            key, x, y = new_vector[0], new_vector[1], new_vector[2]
-            plt.text(x, y, key, fontproperties=font)
-
-        # print data.min(axis=0)
-        x_min = np.min(np.array(data)[:, 1].astype(float), axis=0) - 0.5
-        x_max = np.max(np.array(data)[:, 1].astype(float), axis=0) + 0.5
-        y_min = np.min(np.array(data)[:, 2].astype(float), axis=0) - 0.5
-        y_max = np.max(np.array(data)[:, 2].astype(float), axis=0) + 0.5
-        plt.ylim(y_min, y_max)
-        plt.xlim(x_min, x_max)
-        plt.show()
 
 
 def get_words():
@@ -181,52 +185,50 @@ def get_words():
 def test1():
     words = get_words()
     w2v = W2V(words)
-    print '--------------词  频--------------'
-    bows = w2v.get_global_bow()
-    for bow in bows[:100]:
-        print bow[0], bow[1]
-    print '---------------------------------'
-    tfidf = w2v.get_tfidf()
-    # for tfidf in tfidf[:50]:
-    #     for item in tfidf:
-    #         print item[0], item[1]
-    print '---------------------------------'
-    gloabl_tfidf = w2v.get_global_tfidf()
-    vectors = {}
-    for tfidf in gloabl_tfidf[:100]:
-        vectors[tfidf[0]] = w2v.get_vector(tfidf[0])
-        print tfidf[0], tfidf[1]
+    # print w2v.get_corpus()
+    # print w2v.get_global_bow(keyword=u'圣灵')
+    bows = w2v.get_global_bow(topn=100)
+    for token, bow in bows:
+        print token, bow
+    tfidfs = w2v.get_global_tfidf(topn=100)
+    for token, tfidf in tfidfs:
+        print token, tfidf
+    w2v.draw_vector(100)
+    word2vec = w2v.get_word2vec()
+    most_similar_cosmuls = word2vec.wv.most_similar_cosmul(positive=[u'爱', u'正念'], negative=[u'恐惧'])
+    for token, most_similar_cosmul in most_similar_cosmuls:
+        print token, most_similar_cosmul
+    print(word2vec.wv.doesnt_match(u'奇迹 上主 救赎 恐惧 心灵 时间 错误'.split()))
+    print word2vec.wv.similar_by_word(u'')
 
-    pca = PCA(n_components=2)
-    new_vector = pca.fit_transform(vectors.values())
-    new_vectors = []
-    for index, key in enumerate(vectors.keys()):
-        # new_vectors[key] = new_vector[index]
-        new_vectors.append([key, new_vector[index][0], new_vector[index][1]])
-
-    font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=8)
-    for new_vector in new_vectors:
-        key, x, y = new_vector[0], new_vector[1], new_vector[2]
-        plt.text(x, y, key, fontproperties=font)
-
-    x_min = np.min(np.array(new_vectors)[:, 1].astype(float), axis=0) - 0.5
-    x_max = np.max(np.array(new_vectors)[:, 1].astype(float), axis=0) + 0.5
-    y_min = np.min(np.array(new_vectors)[:, 2].astype(float), axis=0) - 0.5
-    y_max = np.max(np.array(new_vectors)[:, 2].astype(float), axis=0) + 0.5
-    plt.ylim(y_min, y_max)
-    plt.xlim(x_min, x_max)
-    plt.show()
+    # >> >
+    # >> > similarity = word_vectors.similarity('woman', 'man')
+    # >> > similarity > 0.8
+    # True
+    # >> >
+    # >> > result = word_vectors.similar_by_word("cat")
+    # >> > print("{}: {:.4f}".format(*result[0]))
+    # dog: 0.8798
+    # >> >
+    # >> > sentence_obama = 'Obama speaks to the media in Illinois'.lower().split()
+    # >> > sentence_president = 'The president greets the press in Chicago'.lower().split()
+    # >> >
+    # >> > similarity = word_vectors.wmdistance(sentence_obama, sentence_president)
+    # >> > print("{:.4f}".format(similarity))
+    # 3.4893
+    # >> >
+    # >> > distance = word_vectors.distance("media", "media")
+    # >> > print("{:.1f}".format(distance))
+    # 0.0
+    # >> >
+    # >> > sim = word_vectors.n_similarity(['sushi', 'shop'], ['japanese', 'restaurant'])
+    # >> > print("{:.4f}".format(sim))
+    # 0.7067
+    # >> >
+    # >> > vector = word_vectors['computer']  # numpy vector of a word
+    # >> > vector.shape
+    # (100,)
 
 
 if __name__ == '__main__':
-    words = get_words()
-    w2v = W2V(words)
-    print w2v.get_corpus()
-    print w2v.get_global_bow(keyword=u'圣灵')
-    bows = w2v.get_global_bow(topn=10)
-    for token, bow in bows:
-        print token, bow
-    tfidfs = w2v.get_global_tfidf(topn=10)
-    for token, tfidf in tfidfs:
-        print token, tfidf
-    w2v.draw_vector(10)
+    test1()
