@@ -17,6 +17,11 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.font_manager import FontProperties
+import os
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+from mittens import GloVe
+
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -36,6 +41,8 @@ def clean_text(sentence, punctuation):
 def cut_words(sentence, stopwords):
     words = list(jieba.cut(sentence))
     words = del_stopwords(words, stopwords)
+    print sentence
+    print ','.join(words)
     return words
 
 
@@ -53,11 +60,33 @@ class W2V():
         # 这里加入字典，字典的id2token就会被初始化
         self.lsi = models.LsiModel(self.tfidf[self.corpus], id2word=self.dictionary, num_topics=300)
         self.similarity = similarities.MatrixSimilarity(self.lsi[self.corpus])
-        self.word2vec = Word2Vec(words, min_count=1, window=5, size=200, iter=50, )
+        # size 200~300最佳
+        # window 8 最佳
+        self.word2vec = Word2Vec(words, min_count=3, window=5, size=200, iter=10)
         words = [word for doc in self.words for word in doc]
         global_corpus = self.get_corpus(words)
         self.init_global_bows(global_corpus)
         self.init_global_tfidfs(global_corpus)
+        self.init_cooccurrence_matrix()
+        glove_model = GloVe(n=200, max_iter=500)
+        self.glove = glove_model.fit(self.cooccurrence_matrix)
+
+    def init_cooccurrence_matrix(self):
+        size = len(self.dictionary.token2id)
+        matrix = np.zeros((size, size))
+        windows = 8
+        for doc_words in self.words:
+            for center_index, center_word in enumerate(doc_words):
+                center_id = self.dictionary.token2id[center_word]
+                context_start_index = max(center_index - windows, 0)
+                context_end_index = min(center_index + windows + 1, len(doc_words))
+                # window_words = doc_words[context_start_index:context_end_index]
+                for context_index in range(context_start_index, context_end_index):
+                    if center_index != context_index:
+                        context_word = doc_words[context_index]
+                        context_id = self.dictionary.token2id[context_word]
+                        matrix[center_id, context_id] += 1
+        self.cooccurrence_matrix = matrix
 
     def get_word2vec(self):
         return self.word2vec
@@ -77,6 +106,9 @@ class W2V():
 
     def get_vector(self, word):
         return self.word2vec.wv[word]
+
+    def get_glove_vector(self, word):
+        return self.glove[self.dictionary.token2id[word]]
 
     def get_id_by_token(self, token):
         return self.dictionary.token2id[token]
@@ -130,7 +162,7 @@ class W2V():
         gloabl_tfidf = self.get_global_tfidf(topn=topn)
         vectors = []
         for token, tfidf in gloabl_tfidf:
-            vector = self.get_vector(token)
+            vector = self.get_glove_vector(token)
             vectors.append(vector)
             df = df.append(pd.DataFrame([[vector]], index=[token], columns=['vector']))
         pca = PCA(n_components=2, random_state=0)
@@ -139,16 +171,18 @@ class W2V():
         df['vector_y'] = vectors_2d[:, 1]
         return df
 
-    def draw_vector(self, topn):
-        data = self.get_2d_vectors(topn)
+    def draw_vector(self, data):
         font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=8)
         for index, row in data.iterrows():
-            plt.text(row['vector_x'], row['vector_y'], index, fontproperties=font)
+            color = 'red' if index in [u'关系'] else 'black'
+            print row['vector_x'], row['vector_y'], index
+            plt.text(row['vector_x'], row['vector_y'], index, fontproperties=font, color=color)
         desc = data.describe()
-        x_min = desc.at['min', 'vector_x'] * 0.8
-        x_max = desc.at['max', 'vector_x'] * 1.2
-        y_min = desc.at['min', 'vector_y'] * 0.8
-        y_max = desc.at['max', 'vector_y'] * 1.2
+        print desc
+        x_min = desc.at['min', 'vector_x'] * 1
+        x_max = desc.at['max', 'vector_x'] * 1
+        y_min = desc.at['min', 'vector_y'] * 1
+        y_max = desc.at['max', 'vector_y'] * 1
         plt.ylim(y_min, y_max)
         plt.xlim(x_min, x_max)
         plt.show()
@@ -163,10 +197,10 @@ class W2V():
 
 def get_words():
     jieba.load_userdict("/Users/a1800101471/PycharmProjects/python_demo2/nlp_demo/acim/userdict_acim.txt")
-    raw_textlines = get_textlines('/Users/a1800101471/PycharmProjects/python_demo2/nlp_demo/acim/acim_s.txt')
+    raw_textlines = get_textlines('/Users/a1800101471/PycharmProjects/python_demo2/nlp_demo/acim/acim_8.txt')
     stopwords = get_textlines('/Users/a1800101471/PycharmProjects/python_demo2/nlp_demo/acim/stop_word_acim.txt')
 
-    punctuation = "[\t\n\s]" \
+    punctuation = "[\t\n\s　]" \
                   "|[,\.\!\?\/_]" \
                   "|[､、，：。！？；．.‧…]" \
                   "|[-~`＠＃＄％＾＆＊＋－＝/\\\]" \
@@ -187,48 +221,38 @@ def test1():
     w2v = W2V(words)
     # print w2v.get_corpus()
     # print w2v.get_global_bow(keyword=u'圣灵')
-    bows = w2v.get_global_bow(topn=100)
+    topn = 50
+    bows = w2v.get_global_bow(topn=topn)
     for token, bow in bows:
         print token, bow
-    tfidfs = w2v.get_global_tfidf(topn=100)
+    print '----------------------------------'
+    tfidfs = w2v.get_global_tfidf(topn=topn)
     for token, tfidf in tfidfs:
-        print token, tfidf
-    w2v.draw_vector(100)
+        print token
+    w2v.draw_vector(topn)
     word2vec = w2v.get_word2vec()
-    most_similar_cosmuls = word2vec.wv.most_similar_cosmul(positive=[u'爱', u'正念'], negative=[u'恐惧'])
-    for token, most_similar_cosmul in most_similar_cosmuls:
-        print token, most_similar_cosmul
-    print(word2vec.wv.doesnt_match(u'奇迹 上主 救赎 恐惧 心灵 时间 错误'.split()))
-    print word2vec.wv.similar_by_word(u'')
+    # most_similar_cosmuls = word2vec.wv.most_similar_cosmul(positive=[u'爱', u'正念'], negative=[u'恐惧'])
+    # for token, most_similar_cosmul in most_similar_cosmuls:
+    #     print token, most_similar_cosmul
+    # print(word2vec.wv.doesnt_match(u'奇迹 上主 救赎 恐惧 心灵 时间 错误'.split()))
+    for token, similar in word2vec.wv.similar_by_word(u'关系'):
+        print token, similar
+    print '----------------------'
 
-    # >> >
-    # >> > similarity = word_vectors.similarity('woman', 'man')
-    # >> > similarity > 0.8
-    # True
-    # >> >
-    # >> > result = word_vectors.similar_by_word("cat")
-    # >> > print("{}: {:.4f}".format(*result[0]))
-    # dog: 0.8798
-    # >> >
-    # >> > sentence_obama = 'Obama speaks to the media in Illinois'.lower().split()
-    # >> > sentence_president = 'The president greets the press in Chicago'.lower().split()
-    # >> >
-    # >> > similarity = word_vectors.wmdistance(sentence_obama, sentence_president)
-    # >> > print("{:.4f}".format(similarity))
-    # 3.4893
-    # >> >
-    # >> > distance = word_vectors.distance("media", "media")
-    # >> > print("{:.1f}".format(distance))
-    # 0.0
-    # >> >
-    # >> > sim = word_vectors.n_similarity(['sushi', 'shop'], ['japanese', 'restaurant'])
-    # >> > print("{:.4f}".format(sim))
-    # 0.7067
-    # >> >
-    # >> > vector = word_vectors['computer']  # numpy vector of a word
-    # >> > vector.shape
-    # (100,)
+
+def test2():
+    words = get_words()
+    w2v = W2V(words)
+    data = w2v.get_2d_vectors(50)
+    w2v.draw_vector(data)
+
+
+# similar_by_word("cat")
+# similarity('woman', 'man')
+# wmdistance(sentence_obama, sentence_president)
+# word_vectors.distance("media", "media"
+# word_vectors.n_similarity(['sushi', 'shop'], ['japanese', 'restaurant'])
 
 
 if __name__ == '__main__':
-    test1()
+    test2()
