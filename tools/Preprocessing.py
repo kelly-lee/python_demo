@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 # coding: utf-8
 import sys
+import numpy as np
 import pandas as pd
 from scipy.special._ufuncs import boxcox1p
 from scipy.stats import skew, boxcox_normmax
@@ -70,8 +71,24 @@ def fillna_mode(data, features):
 
 
 def boxcox(data):
+    # 计算数据分布的偏度（skewness）
     skew_features = data[numeric_columns(data)].apply(lambda col_vals: skew(col_vals)).sort_values(ascending=False)
     # print(skew_features)
+    # 偏度高的进行boxcox转换为正态分布
+    # Box和Cox提出的变换可以使线性回归模型满足线性性、独立性、方差齐次以及正态性的同时，又不丢失信息。
     high_skew = skew_features[skew_features > 0.5]
     for feature in high_skew.index:
         data[feature] = boxcox1p(data[feature], boxcox_normmax(data[feature] + 1))
+
+
+# log1p就是log(1+x)，转换数据为高斯分布
+def log1p(data):
+    return np.log1p(data)
+
+
+# expm1
+def expm1(data):
+    return np.expm1(data)
+
+def onehot(data):
+    return data.get_dummies(data).reset_index(drop=True)
