@@ -1,33 +1,66 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # coding: utf-8
+import pickle
 import sys
 import numpy as np
 from lightgbm import LGBMRegressor
 from mlxtend.regressor import StackingCVRegressor
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.linear_model import RidgeCV, LassoCV, ElasticNetCV
-from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score
-from sklearn.model_selection import cross_val_score, KFold
+from sklearn.linear_model import RidgeCV, LassoCV, ElasticNetCV, LogisticRegression
+from sklearn.metrics import confusion_matrix, classification_report, roc_auc_score, log_loss
+from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold
+from sklearn.naive_bayes import BernoulliNB
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.svm import SVR
 from xgboost import XGBRegressor
 
 
+def save_pickles(data, filename):
+    with open(filename, 'wb') as f:
+        pickle.dump(data, f)
+
+
+def load_pickles(filename):
+    with open(filename, 'rb') as f:
+        return pickle.load(f)
+
+
 def report(y, y_pred, type='train'):
     cm = confusion_matrix(y, y_pred)
     print('%s confusion matrix:\n %s' % (type, cm))
     cr = classification_report(y, y_pred)
-    print('%s classification report:\n %s' % cr)
-    ras = roc_auc_score(y, y_pred)
-    print('%s roc auc: %s' % ras)
+    print('%s classification report:\n %s' % (type, cr))
+    # ras = roc_auc_score(y, y_pred)
+    # print('%s roc auc: %s' % (type, ras))
 
 
 def cv_rmse(model, X, y):
     kfolds = KFold(n_splits=10, shuffle=True, random_state=42)
     rmse = np.sqrt(-cross_val_score(model, X, y, scoring="neg_mean_squared_error", cv=kfolds))
     return (rmse)
+
+
+def cv_logloss(model, X, y):
+    # 得分为负 – 得分越大,表现越好
+    kfolds = KFold(n_splits=10, shuffle=True, random_state=42)
+    neg_log_loss = cross_val_score(model, X, y, scoring="neg_log_loss", cv=2)
+    return neg_log_loss
+
+
+def bayes_fit(X, y):
+    bayes = BernoulliNB()
+    neg_log_loss = cv_logloss(bayes, X, y)
+    return bayes, neg_log_loss
+
+
+#
+# def lr_fit(X, y):
+#     LR = LogisticRegression(C=0.1)
+#     LR.fit(X, y)
+#     print("逻辑回归log损失为 %f" % (log_loss(y_train, y_pred)))
+#     print("逻辑回归建模耗时 %f 秒" % (lrcost_time))
 
 
 def linear_cv_fit(X, y):
@@ -50,7 +83,6 @@ def linear_cv_fit(X, y):
     print('ridge cv_rmse = %.4f (%.4f)' % (ridge_cv_rmse.mean(), ridge_cv_rmse.std()))
     print('lasso cv_rmse = %.4f (%.4f)' % (lasso_cv_rmse.mean(), lasso_cv_rmse.std()))
     print('elasticnet cv_rmse = %.4f (%.4f)' % (elasticnet_cv_rmse.mean(), elasticnet_cv_rmse.std()))
-
 
     elasticnet = elasticnet.fit(X, y)
     lasso = lasso.fit(X, y)
@@ -100,3 +132,35 @@ def tree_cv_fit(X, y):
     lightgbm = lightgbm.fit(X, y)
     xgboost = xgboost.fit(X, y)
     return svr, gbr, xgboost, lightgbm
+
+
+import xgboost as xgb
+
+
+
+
+
+def xgb_fit(X, y):
+    train_xgb = xgb.DMatrix(X, label=y)
+    # test_xgb  = xgb.DMatrix(test_x)
+    params = {
+        'max_depth': 4,  # the maximum depth of each tree
+        'eta': 0.3,  # the training step for each iteration
+        'silent': 1,  # logging mode - quiet
+        'objective': 'multi:softprob',  # error evaluation for multiclass training
+        'num_class': 39,
+    }
+
+    params = {
+        'max_depth': 6,  # the maximum depth of each tree
+        'eta': 0.3,  # the training step for each iteration
+        'num_boost_rounds': 150,
+        'silent': 1,  # logging mode - quiet
+        'objective': 'multi:softprob',  # error evaluation for multiclass training
+        'eval_metric': 'mlogloss',
+        'learning_data': 0.07,
+        'num_class': 39,
+    }
+
+    cv = xgb.cv(params, train_xgb, nfold=3, early_stopping_rounds=20, metrics='mlogloss', verbose_eval=1)
+    return train_xgb, cv
