@@ -11,8 +11,6 @@ numeric_dtypes = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
 object_dtypes = ['object']
 
 
-# Pro01922
-
 def info(data):
     num = data.isnull().sum().sort_values(ascending=False)
     num_p = num / len(data)

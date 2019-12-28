@@ -10,7 +10,7 @@ from matplotlib import patches
 from scipy.spatial import ConvexHull
 from matplotlib.font_manager import FontProperties
 from scipy.stats import norm, skew
-from sklearn.metrics import roc_curve,auc
+from sklearn.metrics import roc_curve, auc
 
 from tools import Preprocessing
 
@@ -28,11 +28,11 @@ from tools import Preprocessing
 
 
 large = 22;
-med = 16;
+med = 12;
 small = 12;
 font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=med)
 params = {
-    'figure.figsize': (12, 8),  # 图像的画布大小
+    'figure.figsize': (12, 12),  # 图像的画布大小
 
     'figure.titlesize': large,  # 整个画布的标题字体大小
     'axes.titlesize': large,  # 子图上的标题字体大小
@@ -468,11 +468,11 @@ def distplot_grid(data, feature_xs=None, feature_h=None, grid=(3, 3), bins=10, h
 def hlines(data, feature_column, val_column, ax=None):
     if ax is None:
         ax = plt.gca()
-    ax.hlines(y=data.index, xmin=0, xmax=data[val_column], color='firebrick', alpha=0.4, linewidth=30)
+    ax.hlines(y=data.index, xmin=0, xmax=data[val_column], color='firebrick', alpha=0.4, linewidth=med + 2)
     for index, row in data.iterrows():
-        plt.text(row[val_column], index, round(row[val_column], 2), horizontalalignment='left',
-                 verticalalignment='center', fontdict={'color': 'black', 'fontsize': 30})
-    plt.yticks(data.index, data[feature_column], fontsize=30)
+        plt.text(row[val_column], index - 0.1, round(row[val_column], 2), horizontalalignment='left',
+                 verticalalignment='center', fontdict={'color': 'black', 'fontsize': med})
+    plt.yticks(data.index, data[feature_column], fontsize=med)
     plt.show()
 
 
