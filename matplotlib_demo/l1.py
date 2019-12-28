@@ -179,9 +179,9 @@ if __name__ == '__main__':
     x2 = [0] * 10 + [1] * 40
     y = 2 * x1 + 5 + np.random.random(50) * 10
     import  matplotlib
-    print(matplotlib.matplotlib_fname())
-    print(plt.rcParams['font.sans-serif'])
-    plt.rcParams['font.sans-serif'] = ['Simhei']
+    # print(matplotlib.matplotlib_fname())
+    # print(plt.rcParams['font.sans-serif'])
+    # plt.rcParams['font.sans-serif'] = ['Simhei']
     data = pd.DataFrame({'x1': x1, 'x2': x2, 'y': y})
     gridobj = sns.lmplot("x1", "y", data=data, hue="x2", legend=False)
     plt.legend(['类别0','类别1'])
