@@ -6,8 +6,8 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import sys
 
-reload(sys)
-sys.setdefaultencoding('utf8')
+# reload(sys)
+# sys.setdefaultencoding('utf8')
 from matplotlib.font_manager import FontProperties
 
 font = FontProperties(fname='/System/Library/Fonts/PingFang.ttc', size=8)
