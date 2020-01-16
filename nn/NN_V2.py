@@ -113,9 +113,12 @@ class NN():
             else:
                 delta_next, w_next = self.deltas[layer + 1], self.ws[layer + 1]
                 a_derivative = self.do_actication_derivative(layer, a)
+                #公式
                 delta = a_derivative * np.dot(delta_next, w_next.T)
             a_pre = self.activation_datas[layer - 1]
+            #公式
             dw = np.dot(a_pre.T, delta)
+            #公式
             db = np.sum(delta, axis=0)
             self.deltas[layer] = delta
             self.dws[layer] = dw

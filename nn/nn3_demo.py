@@ -60,7 +60,7 @@ nn_output_dim = 2  # output layer dimensionality #输出层维度
 
 # Gradient descent parameters (I picked these by hand)
 epsilon = 0.01  # learning rate for gradient descent 学习速率
-reg_lambda = 0.01  # regularization strength 正则化强度
+reg_lambda = 500  # regularization strength 正则化强度
 
 
 # %% 7
@@ -99,7 +99,7 @@ def predict(model, x):
 # - nn_hdim: Number of nodes in the hidden layer 隐藏层节点数量
 # - num_passes: Number of passes through the training data for gradient descent 梯度下降的步数
 # - print_loss: If True, print the loss every 1000 iterations
-def build_model(nn_hdim, num_passes=20000, print_loss=False):
+def build_model(nn_hdim, num_passes=50000, print_loss=False):
     # Initialize the parameters to random values. We need to learn these.
     np.random.seed(0)
     W1 = np.random.randn(nn_input_dim, nn_hdim) / np.sqrt(nn_input_dim)
@@ -116,6 +116,8 @@ def build_model(nn_hdim, num_passes=20000, print_loss=False):
         # Forward propagation
         z1 = X.dot(W1) + b1
         a1 = np.tanh(z1)
+
+
         z2 = a1.dot(W2) + b2
         exp_scores = np.exp(z2)
         probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
@@ -130,8 +132,8 @@ def build_model(nn_hdim, num_passes=20000, print_loss=False):
         db1 = np.sum(delta2, axis=0)
 
         # Add regularization terms (b1 and b2 don't have regularization terms)
-        dW2 += reg_lambda * W2
-        dW1 += reg_lambda * W1
+        dW2 += reg_lambda / num_examples * W2
+        dW1 += reg_lambda / num_examples * W1
 
         # Gradient descent parameter update
         W1 += -epsilon * dW1

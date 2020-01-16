@@ -6,7 +6,7 @@ import numpy as np
 from nn.NN_V2 import NN
 from nn.Functions import *
 
-
+# https://blog.csdn.net/u014595019/article/details/51943428
 # https://ai.yanxishe.com/page/TextTranslation/1317
 # https://towardsdatascience.com/word2vec-from-scratch-with-numpy-8786ddd49e72
 # https://www.geeksforgeeks.org/implement-your-own-word2vecskip-gram-model-in-python/
